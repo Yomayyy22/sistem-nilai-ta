@@ -334,8 +334,9 @@ textarea{resize:vertical;min-height:70px;}
         <div class="card">
           <div class="card-title">
             <span>Akun Mahasiswa</span>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-sm" onclick="importAkunMhs()">⬆ Import dari Data TA</button>
+              <button class="btn btn-sm" onclick="resetPasswordMassal('mahasiswa')" style="color:#7a5200;border-color:#f0c050;">🔄 Reset Semua Password</button>
               <button class="btn btn-primary btn-sm" onclick="openUserModal('mahasiswa')">+ Tambah Akun</button>
             </div>
           </div>
@@ -357,8 +358,9 @@ textarea{resize:vertical;min-height:70px;}
         <div class="card">
           <div class="card-title">
             <span>Akun Dosen</span>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-sm" onclick="importAkunDosen()">⬆ Import dari Data Dosen</button>
+              <button class="btn btn-sm" onclick="resetPasswordMassal('dosen')" style="color:#7a5200;border-color:#f0c050;">🔄 Reset Semua Password</button>
               <button class="btn btn-primary btn-sm" onclick="openUserModal('dosen')">+ Tambah Akun</button>
             </div>
           </div>
@@ -1315,10 +1317,14 @@ async function renderDashboardBimbingan(){
 //  TOGGLE PASSWORD VISIBILITY
 // ══════════════════════════════════════════
 const _pwVisible={};
-function togglePw(uid,encodedHash){
+function togglePw(uid, hash){
   const el=document.getElementById('pw-'+uid); if(!el) return;
   if(_pwVisible[uid]){ el.textContent='••••••'; _pwVisible[uid]=false; }
-  else { try{ el.textContent=atob(atob(encodedHash)); }catch(e){ try{ el.textContent=atob(encodedHash); }catch(e2){ el.textContent='(terenkripsi)'; } } _pwVisible[uid]=true; }
+  else {
+    try{ el.textContent=atob(hash); }
+    catch(e){ el.textContent='(tidak bisa didecode)'; }
+    _pwVisible[uid]=true;
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1522,8 +1528,8 @@ if(checkAdminSession()){
 // ══════════════════════════════════════════
 //  SUPABASE CONFIG — isi setelah setup
 // ══════════════════════════════════════════
-const SB_URL  = 'https://jfigezwgpjdcstfhawmq.supabase.co';  // cth: 'https://xxxxxx.supabase.co'
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaWdlendncGpkY3N0Zmhhd21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjA3MzMsImV4cCI6MjA5ODEzNjczM30.ne8vbzqzXScutIkcqgpAJrSMbNjZN0DXmbxVVCaylzk';  // cth: 'eyJhbGci...'
+const SB_URL  = '';  // cth: 'https://xxxxxx.supabase.co'
+const SB_KEY  = '';  // cth: 'eyJhbGci...'
 
 let sbClient = null;
 function getSB(){
@@ -1591,7 +1597,7 @@ function renderUserTable(role){
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
           <span id="pw-${u.id}" style="font-size:11px;background:#f0eee8;padding:2px 8px;border-radius:6px;color:#888;font-family:monospace">••••••</span>
-          <button class="btn btn-sm btn-icon" style="opacity:0.5;font-size:11px;padding:2px 6px;" onclick="togglePw('${u.id}','${btoa(u.password_hash)}')" title="Lihat password">👁</button>
+          <button class="btn btn-sm btn-icon" style="opacity:0.5;font-size:11px;padding:2px 6px;" onclick="togglePw('${u.id}','${u.password_hash}')" title="Lihat password">👁</button>
         </div>
       </td>
       <td>
@@ -1701,34 +1707,73 @@ async function confirmDelUser(){
 async function importAkunMhs(){
   const sb = getSB();
   if(!sb){ alert('Supabase belum terhubung.'); return; }
-  if(!DB || !DB.master || !DB.master.length){ alert('Tidak ada data mahasiswa di sistem. Buka halaman Mahasiswa & TA dulu.'); return; }
+  if(!DB || !DB.master || !DB.master.length){ alert('Tidak ada data mahasiswa di sistem.'); return; }
 
+  const total = DB.master.reduce((s,m)=>s+m.mhs.length,0);
   const konfirm = confirm(
-    `Import ${DB.master.reduce((s,m)=>s+m.mhs.length,0)} akun mahasiswa dari data TA angkatan ${currentAngkatan}?\n\nPassword default = "nim" + NIM masing-masing.\nAkun yang sudah ada akan dilewati.`
+    `Import/update ${total} akun mahasiswa dari data TA angkatan ${currentAngkatan}?\n\nPassword default = nim + NIM (cth: nim23102210001)\nAkun yang sudah ada akan diupdate namanya.`
   );
   if(!konfirm) return;
 
   showUserAlert('mahasiswa','Mengimport... harap tunggu','info');
 
-  let ok=0, skip=0, fail=0;
+  let ok=0, fail=0;
   for(const m of DB.master){
     for(const mh of m.mhs){
-      const {error} = await sb.from('users').insert({
+      // Gunakan upsert agar akun lama juga terupdate
+      const {error} = await sb.from('users').upsert({
         nim_or_inisial: mh.nim,
         nama: mh.nama,
         role: 'mahasiswa',
         password_hash: btoa('nim'+mh.nim),
         angkatan: currentAngkatan
-      });
-      if(error){
-        if(error.code==='23505') skip++; // unique violation = sudah ada
-        else fail++;
-      } else ok++;
+      }, {onConflict: 'nim_or_inisial'});
+      if(error) fail++;
+      else ok++;
     }
   }
 
-  showUserAlert('mahasiswa',`✅ Import selesai: ${ok} ditambahkan, ${skip} sudah ada, ${fail} gagal.`,'success');
+  showUserAlert('mahasiswa', ok>0
+    ? `✅ Selesai: ${ok} akun tersimpan. Password default: nim + NIM`
+    : `❌ Gagal: ${fail} error. Cek koneksi Supabase.`,
+    ok>0?'success':'danger');
   loadUsers('mahasiswa');
+}
+
+async function resetPasswordMassal(role){
+  const sb = getSB();
+  if(!sb){ alert('Supabase belum terhubung.'); return; }
+
+  const list = role==='mahasiswa' ? usersMhs : usersDosen;
+  if(!list.length){ alert('Muat data dulu (klik Muat / Refresh).'); return; }
+
+  const konfirm = confirm(
+    `Reset password SEMUA ${list.length} ${role} ke format default?\n\n`+
+    (role==='mahasiswa'
+      ? 'Format baru: nim + NIM (cth: nim23102210001)'
+      : 'Format baru: nim + inisial huruf kecil (cth: nimays)')+
+    '\n\nAkun yang sudah ganti password akan ter-reset juga!'
+  );
+  if(!konfirm) return;
+
+  showUserAlert(role, 'Mereset password... harap tunggu', 'info');
+  const sb2 = getSB();
+  let ok=0, fail=0;
+  for(const u of list){
+    const nim = u.nim_or_inisial;
+    const newHash = role==='mahasiswa'
+      ? btoa('nim'+nim)
+      : btoa('nim'+nim.toLowerCase());
+    const {error} = await sb2.from('users')
+      .update({password_hash: newHash})
+      .eq('id', u.id);
+    if(error) fail++;
+    else ok++;
+  }
+  showUserAlert(role,
+    `✅ Reset selesai: ${ok} akun berhasil, ${fail} gagal.`,
+    ok>0?'success':'danger');
+  loadUsers(role);
 }
 
 async function importAkunDosen(){
