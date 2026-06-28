@@ -94,7 +94,29 @@ textarea{resize:vertical;min-height:70px;}
 </style>
 </head>
 <body>
-<div class="app">
+<!-- ══ AUTH ADMIN ══ -->
+<div id="admin-auth" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#F7F6F3;">
+  <div style="background:#fff;border:1px solid #e8e6e0;border-radius:16px;padding:36px 32px;width:100%;max-width:400px;">
+    <div style="font-size:28px;margin-bottom:6px;">📋</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Sistem Penilaian TA</div>
+    <div style="font-size:13px;color:#888;margin-bottom:24px;">Login sebagai Koordinator / Admin</div>
+    <div id="admin-auth-alert" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
+    <div class="form-group"><label>Username Admin</label><input type="text" id="admin-username" placeholder="admin" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="admin-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doAdminLogin()">Masuk</button>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:#888;">
+      <button onclick="showAdminResetPw()" style="border:none;background:none;font-size:12px;color:#6E66DC;cursor:pointer;text-decoration:underline;">Lupa password?</button>
+    </div>
+    <div id="admin-reset-block" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e8e6e0;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Reset Password Admin</div>
+      <div class="form-group"><label>Kode reset</label><input type="text" id="admin-reset-code" placeholder="Masukkan kode dari koordinator..."></div>
+      <div class="form-group"><label>Password baru</label><input type="password" id="admin-new-pass" placeholder="Minimal 6 karakter"></div>
+      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" onclick="doAdminReset()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="admin-app" style="display:none;">
   <div class="sidebar">
     <div class="sb-header"><div class="sb-logo">📋 Nilai TA</div><div class="sb-sub" id="sidebar-angkatan-label">Angkatan 2022</div></div>
     <nav class="sb-nav">
@@ -118,7 +140,11 @@ textarea{resize:vertical;min-height:70px;}
   <div class="main">
     <div class="topbar">
       <div><div class="topbar-title" id="topbar-title">Dashboard</div><div class="topbar-sub" id="topbar-sub">Sistem Penilaian Tugas Akhir S1 — Angkatan 2022</div></div>
-      <div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="openImportModal()">⬆ Import Nilai</button><button class="btn btn-sm btn-primary" onclick="exportXLSX()">⬇ Export Excel</button></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-sm" onclick="openImportModal()">⬆ Import Nilai</button>
+        <button class="btn btn-sm btn-primary" onclick="exportXLSX()">⬇ Export Excel</button>
+        <button class="btn btn-sm" onclick="doAdminLogout()" title="Logout" style="color:#c0392b;border-color:#f0d0cd;">⏻ Keluar</button>
+      </div>
     </div>
     <div class="content">
 
@@ -351,7 +377,7 @@ textarea{resize:vertical;min-height:70px;}
 
     </div><!-- /content -->
   </div><!-- /main -->
-</div><!-- /app -->
+</div><!-- /admin-app -->
 
 <!-- MODALS -->
 <div class="modal-overlay hidden" id="modal-mhs">
@@ -1351,11 +1377,99 @@ function showTmplAlert(msg,type){
   if(type==='success') setTimeout(()=>el.style.display='none',4000);
 }
 
+// ══════════════════════════════════════════
+//  ADMIN AUTH
+// ══════════════════════════════════════════
+const ADMIN_PW_KEY = 'ta_admin_pw';
+const ADMIN_SESSION_KEY = 'ta_admin_session';
+const DEFAULT_ADMIN_PW = 'admin2022';  // password default — ganti setelah pertama login!
+const RESET_CODE = 'RESET2024';        // kode untuk reset password admin
+
+function getAdminPw(){
+  return localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_ADMIN_PW;
+}
+
+function checkAdminSession(){
+  const sess = localStorage.getItem(ADMIN_SESSION_KEY);
+  if(!sess) return false;
+  try{
+    const {exp} = JSON.parse(sess);
+    return Date.now() < exp;
+  }catch(e){ return false; }
+}
+
+function startAdminSession(){
+  const exp = Date.now() + 8*60*60*1000; // 8 jam
+  localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({exp}));
+}
+
+function doAdminLogin(){
+  const user = document.getElementById('admin-username').value.trim();
+  const pass = document.getElementById('admin-password').value;
+  const al = document.getElementById('admin-auth-alert');
+
+  if(!user||!pass){
+    al.className=''; al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#fde0e0;color:#8a1a1a;';
+    al.textContent='Username dan password wajib diisi.'; return;
+  }
+  if(user!=='admin'){
+    al.className=''; al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#fde0e0;color:#8a1a1a;';
+    al.textContent='Username tidak dikenal.'; return;
+  }
+  if(pass !== getAdminPw()){
+    al.className=''; al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#fde0e0;color:#8a1a1a;';
+    al.textContent='Password salah. Password default: admin2022'; return;
+  }
+  startAdminSession();
+  document.getElementById('admin-auth').style.display='none';
+  document.getElementById('admin-app').style.display='flex';
+}
+
+function doAdminLogout(){
+  if(!confirm('Yakin keluar dari dashboard admin?')) return;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  document.getElementById('admin-app').style.display='none';
+  document.getElementById('admin-auth').style.display='flex';
+  document.getElementById('admin-password').value='';
+}
+
+function showAdminResetPw(){
+  const bl = document.getElementById('admin-reset-block');
+  bl.style.display = bl.style.display==='none'?'block':'none';
+}
+
+function doAdminReset(){
+  const code = document.getElementById('admin-reset-code').value.trim();
+  const newpw = document.getElementById('admin-new-pass').value;
+  const al = document.getElementById('admin-auth-alert');
+  if(code !== RESET_CODE){
+    al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#fde0e0;color:#8a1a1a;';
+    al.textContent='Kode reset salah.'; return;
+  }
+  if(!newpw||newpw.length<6){
+    al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#fde0e0;color:#8a1a1a;';
+    al.textContent='Password minimal 6 karakter.'; return;
+  }
+  localStorage.setItem(ADMIN_PW_KEY, newpw);
+  al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#d4f0d7;color:#1a6b25;';
+  al.textContent='✅ Password berhasil direset! Silakan login dengan password baru.';
+  document.getElementById('admin-reset-block').style.display='none';
+}
+
 // ensure 2022 in list
 const _aList=getAngkatanList();
 if(!_aList.includes('2022')){_aList.unshift('2022');saveAngkatanList(_aList);}
 initDB('2022');
-renderDashboard();
+
+// Cek session admin
+if(checkAdminSession()){
+  document.getElementById('admin-auth').style.display='none';
+  document.getElementById('admin-app').style.display='flex';
+  renderDashboard();
+} else {
+  document.getElementById('admin-auth').style.display='flex';
+  document.getElementById('admin-app').style.display='none';
+}
 </script>
 <!-- Modal: Tambah/Edit Akun User -->
 <div class="modal-overlay hidden" id="modal-user">
@@ -1408,8 +1522,8 @@ renderDashboard();
 // ══════════════════════════════════════════
 //  SUPABASE CONFIG — isi setelah setup
 // ══════════════════════════════════════════
-const SB_URL  = 'https://jfigezwgpjdcstfhawmq.supabase.co';  // cth: 'https://xxxxxx.supabase.co'
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaWdlendncGpkY3N0Zmhhd21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjA3MzMsImV4cCI6MjA5ODEzNjczM30.ne8vbzqzXScutIkcqgpAJrSMbNjZN0DXmbxVVCaylzk';  // cth: 'eyJhbGci...'
+const SB_URL  = '';  // cth: 'https://xxxxxx.supabase.co'
+const SB_KEY  = '';  // cth: 'eyJhbGci...'
 
 let sbClient = null;
 function getSB(){
