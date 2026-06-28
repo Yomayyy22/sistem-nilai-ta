@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Penilaian TA 2022</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F7F6F3;color:#1a1a1a;font-size:14px;}
+.app{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:220px;background:#1a1a2e;flex-shrink:0;display:flex;flex-direction:column;}
+.sb-header{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.sb-logo{font-size:13px;font-weight:600;color:#fff;}
+.sb-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;}
+.sb-nav{padding:10px 8px;flex:1;}
+.sb-group{font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.08em;text-transform:uppercase;padding:10px 10px 4px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;transition:all 0.15s;}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);}
+.nav-item.active{background:rgba(110,102,220,0.25);color:#a89cf7;}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{background:#fff;border-bottom:1px solid #e8e6e0;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar-title{font-size:15px;font-weight:600;}
+.topbar-sub{font-size:12px;color:#888;margin-top:1px;}
+.content{padding:22px 24px;flex:1;}
+.page{display:none;} .page.active{display:block;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal{background:#fff;border-radius:14px;padding:24px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;}
+.modal-sm{width:400px;} .modal-lg{width:720px;}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:18px;padding-right:24px;}
+.modal-close{position:absolute;top:16px;right:16px;border:none;background:none;font-size:20px;cursor:pointer;color:#888;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #e8e6e0;}
+.card{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:18px 20px;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.metric{background:#F7F6F3;border-radius:10px;padding:14px 16px;border:1px solid #eae8e2;}
+.metric-label{font-size:11px;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.03em;}
+.metric-value{font-size:24px;font-weight:700;line-height:1;}
+.metric-sub{font-size:11px;color:#888;margin-top:3px;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:9px 12px;font-weight:600;font-size:11px;color:#888;border-bottom:1px solid #e8e6e0;white-space:nowrap;text-transform:uppercase;letter-spacing:0.03em;}
+td{padding:8px 12px;border-bottom:1px solid #f0eee8;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafaf8;}
+.action-btns{display:flex;gap:5px;opacity:0;transition:opacity 0.15s;}
+tr:hover .action-btns{opacity:1;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.form-group{margin-bottom:12px;}
+.form-group label{display:block;font-size:11px;font-weight:600;color:#666;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.03em;}
+input,select,textarea{width:100%;padding:8px 11px;border:1px solid #e0ddd6;border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:#6E66DC;box-shadow:0 0 0 3px rgba(110,102,220,0.08);}
+textarea{resize:vertical;min-height:70px;}
+.score-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.score-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.score-item label{font-size:10px;color:#888;font-weight:600;display:block;margin-bottom:4px;}
+.score-item input{text-align:center;padding:7px 4px;}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #e0ddd6;background:#fff;color:#1a1a1a;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{background:#F7F6F3;}
+.btn-primary{background:#6E66DC;color:#fff;border-color:#6E66DC;}
+.btn-primary:hover{background:#5a54c0;}
+.btn-danger{background:#fff;color:#c0392b;border-color:#f0d0cd;}
+.btn-danger:hover{background:#fdf0ee;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-icon{padding:5px 7px;border-radius:6px;font-size:13px;}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-a{background:#d4f0d7;color:#1a6b25;} .badge-ab{background:#b8e8c8;color:#1a5c35;}
+.badge-b{background:#dce8fb;color:#1a4a8a;} .badge-bc{background:#ede8fb;color:#4a2e9e;}
+.badge-c{background:#fef3d0;color:#7a5200;} .badge-d{background:#fde0e0;color:#8a1a1a;}
+.badge-e{background:#e8e8e8;color:#444;}
+.badge-none{background:#f0eee8;color:#888;} .badge-done{background:#d4f0d7;color:#1a6b25;}
+.badge-fix{background:#dce8fb;color:#1a4a8a;} .badge-ind{background:#f0edf9;color:#5a3d9e;}
+.badge-kel{background:#fef3d0;color:#7a5200;}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:12px;background:#EEEDFE;color:#5a3d9e;margin-right:3px;}
+.search-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.search-bar input{max-width:220px;}
+.search-bar select{max-width:180px;width:auto;}
+.tab-pills{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.tab-pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #e0ddd6;cursor:pointer;background:#fff;color:#666;}
+.tab-pill.active{background:#6E66DC;color:#fff;border-color:#6E66DC;}
+.avatar{width:32px;height:32px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5a3d9e;flex-shrink:0;}
+.progress-wrap{background:#F7F6F3;border-radius:20px;height:7px;overflow:hidden;margin-top:5px;}
+.progress-bar{height:7px;border-radius:20px;}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;}
+.alert-success{background:#d4f0d7;color:#1a6b25;} .alert-danger{background:#fde0e0;color:#8a1a1a;}
+.peran-block{background:#F7F6F3;border:1px solid #e8e6e0;border-radius:10px;padding:14px;margin-bottom:10px;}
+.peran-block-title{font-size:12px;font-weight:600;color:#333;margin-bottom:8px;}
+::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-header"><div class="sb-logo">📋 Nilai TA</div><div class="sb-sub" id="sidebar-angkatan-label">Angkatan 2022</div></div>
+    <nav class="sb-nav">
+      <div class="sb-group">Angkatan</div>
+      <div id="angkatan-list"></div>
+      <div class="sb-group">Overview</div>
+      <button class="nav-item active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+      <div class="sb-group">Data Master</div>
+      <button class="nav-item" onclick="showPage('mhs',this)">👩‍🎓 Mahasiswa & TA</button>
+      <button class="nav-item" onclick="showPage('dosen',this)">👨‍🏫 Dosen</button>
+      <button class="nav-item" onclick="showPage('bobot',this)">⚖️ Bobot & Formula</button>
+      <div class="sb-group">Kegiatan</div>
+      <button class="nav-item" onclick="showPage('jadwal',this)">📅 Jadwal</button>
+      <button class="nav-item" onclick="showPage('input',this)">✏️ Input Nilai</button>
+      <button class="nav-item" onclick="showPage('rekap',this)">📄 Rekap Nilai</button>
+      <div class="sb-group">Sistem</div>
+      <button class="nav-item" onclick="showPage('users',this)">👤 Kelola Akun</button>
+      <button class="nav-item" onclick="showPage('template',this)">📋 Template Berkas</button>
+    </nav>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div><div class="topbar-title" id="topbar-title">Dashboard</div><div class="topbar-sub" id="topbar-sub">Sistem Penilaian Tugas Akhir S1 — Angkatan 2022</div></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="openImportModal()">⬆ Import Nilai</button><button class="btn btn-sm btn-primary" onclick="exportXLSX()">⬇ Export Excel</button></div>
+    </div>
+    <div class="content">
+
+      <div id="page-dashboard" class="page active">
+        <div class="grid-4" id="dash-metrics"></div>
+        <div class="grid-2">
+          <div class="card"><div class="card-title">📈 Progress nilai</div><div id="dash-progress"></div></div>
+          <div class="card"><div class="card-title">🎓 Distribusi grade</div><div id="dash-grades"></div></div>
+        </div>
+        <div class="card"><div class="card-title">⚠️ Belum ada nilai</div><div id="dash-incomplete"></div></div>
+
+        <!-- Widget Kehadiran & Bimbingan -->
+        <div class="grid-2" style="margin-top:0;">
+          <div class="card">
+            <div class="card-title">
+              <span>👥 Bukti kehadiran seminar</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#888;">Syarat minimal:</span>
+                <input type="number" id="syarat-hadir" min="1" max="50" value="5" style="width:54px;padding:4px 8px;border:1px solid #e0ddd6;border-radius:6px;font-size:12px;" oninput="renderDashboardKehadiran()">
+                <span style="font-size:11px;color:#888;">sesi</span>
+              </div>
+            </div>
+            <div id="dash-kehadiran"><div style="color:#888;font-size:13px;">Memuat...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">
+              <span>📖 Bimbingan mahasiswa</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#888;">Syarat minimal:</span>
+                <input type="number" id="syarat-bimbingan" min="1" max="50" value="8" style="width:54px;padding:4px 8px;border:1px solid #e0ddd6;border-radius:6px;font-size:12px;" oninput="renderDashboardBimbingan()">
+                <span style="font-size:11px;color:#888;">kali</span>
+              </div>
+            </div>
+            <div id="dash-bimbingan"><div style="color:#888;font-size:13px;">Memuat...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-mhs" class="page">
+        <div class="card">
+          <div class="card-title"><span>Mahasiswa &amp; Tugas Akhir</span><button class="btn btn-primary btn-sm" onclick="openMhsModal()">+ Tambah Sesi TA</button></div>
+          <div class="search-bar">
+            <input type="text" id="mhs-q" placeholder="Cari nama, NIM, judul, dosen..." oninput="renderMhs()">
+            <select id="mhs-jenis" onchange="renderMhs()"><option value="">Semua jenis</option><option value="Individu">Individu</option><option value="Kelompok">Kelompok</option></select>
+            <select id="mhs-pembimbing" onchange="renderMhs()"><option value="">Semua Pembimbing</option></select>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>ID</th><th>Nama</th><th>NIM</th><th>Judul TA</th><th>PS1</th><th>PS2</th><th>Penguji</th><th>Final</th><th>Grade</th><th>Aksi</th></tr></thead>
+            <tbody id="mhs-tbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div id="page-dosen" class="page">
+        <div class="card">
+          <div class="card-title"><span>Daftar Dosen</span><button class="btn btn-primary btn-sm" onclick="openDosenModal()">+ Tambah Dosen</button></div>
+          <div class="search-bar"><input type="text" id="dosen-q" placeholder="Cari nama atau inisial..." oninput="renderDosen()"></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>Inisial</th><th>Nama Lengkap</th><th>PS1</th><th>PS2</th><th>Penguji</th><th>Total</th><th>Aksi</th></tr></thead>
+            <tbody id="dosen-tbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div id="page-bobot" class="page">
+        <div class="grid-2">
+          <div class="card"><div class="card-title">⚖️ Bobot Seminar <button class="btn btn-sm" onclick="openBobotModal('seminar')">✏️ Edit</button></div>
+            <table><thead><tr><th>Kode</th><th>Keterangan</th><th>Bobot</th></tr></thead><tbody id="bobot-seminar-tbody"></tbody></table>
+            <div style="margin-top:12px;padding:10px;background:#F7F6F3;border-radius:8px;font-size:12px;color:#555;display:flex;align-items:center;justify-content:space-between;">
+              <span id="formula-seminar-label">Hasil = <strong>60%</strong> rata-rata Pembimbing + <strong>40%</strong> Penguji</span>
+              <button class="btn btn-sm" onclick="openFormulaModal('seminar')" style="flex-shrink:0;margin-left:10px;">✏️ Edit</button>
+            </div>
+          </div>
+          <div class="card"><div class="card-title">⚖️ Bobot Sidang <button class="btn btn-sm" onclick="openBobotModal('sidang')">✏️ Edit</button></div>
+            <table><thead><tr><th>Kode</th><th>Keterangan</th><th>Bobot</th></tr></thead><tbody id="bobot-sidang-tbody"></tbody></table>
+            <div style="margin-top:12px;padding:10px;background:#F7F6F3;border-radius:8px;font-size:12px;color:#555;display:flex;align-items:center;justify-content:space-between;">
+              <span id="formula-sidang-label">Hasil = <strong>60%</strong> rata-rata Pembimbing + <strong>40%</strong> Penguji</span>
+              <button class="btn btn-sm" onclick="openFormulaModal('sidang')" style="flex-shrink:0;margin-left:10px;">✏️ Edit</button>
+            </div>
+          </div>
+          <div class="card"><div class="card-title">⚖️ Bobot Proses <button class="btn btn-sm" onclick="openBobotModal('proses')">✏️ Edit</button></div>
+            <table><thead><tr><th>Kode</th><th>Keterangan</th><th>Bobot</th></tr></thead><tbody id="bobot-proses-tbody"></tbody></table>
+            <div style="margin-top:12px;padding:10px;background:#F7F6F3;border-radius:8px;font-size:12px;color:#555;">Hasil = rata-rata semua Pembimbing</div>
+          </div>
+          <div class="card"><div class="card-title">🏆 Bobot Nilai Final <button class="btn btn-sm" onclick="openFinalModal()">✏️ Edit</button></div>
+            <table><thead><tr><th>Komponen</th><th>Keterangan</th><th>Bobot</th></tr></thead><tbody id="bobot-final-tbody"></tbody></table>
+            <div style="margin-top:12px;padding:10px;background:#F7F6F3;border-radius:8px;font-size:12px;color:#555;" id="bobot-final-formula"></div>
+          </div>
+          <div class="card"><div class="card-title">🎯 Konversi Grade <button class="btn btn-sm" onclick="openGradeModal()">✏️ Edit</button></div>
+            <table><thead><tr><th>Grade</th><th>Nilai Minimal</th></tr></thead><tbody id="grade-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-jadwal" class="page">
+        <div id="jadwal-pills" class="tab-pills">
+          <button class="tab-pill active" onclick="switchJadwal('seminar',this)">Seminar</button>
+          <button class="tab-pill" onclick="switchJadwal('sidang',this)">Sidang</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><span id="jadwal-card-title">Jadwal Seminar</span></div>
+          <div class="search-bar">
+            <input type="text" id="jadwal-q" placeholder="Cari nama, dosen, ruangan..." oninput="renderJadwal()">
+            <select id="jadwal-sf" onchange="renderJadwal()"><option value="">Semua status</option><option value="Done">Done</option><option value="Fix">Fix</option><option value="-">Belum dijadwalkan</option></select>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>Tanggal</th><th>Jam</th><th>Mahasiswa</th><th>PS1</th><th>PS2</th><th>Penguji</th><th>Ruangan</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead>
+            <tbody id="jadwal-tbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div id="page-input" class="page">
+        <div class="card">
+          <div class="card-title">Filter mahasiswa</div>
+          <div class="form-row">
+            <div class="form-group"><label>Cari nama / NIM</label><input type="text" id="inp-q" placeholder="Ketik..." oninput="renderInputList()"></div>
+            <div class="form-group"><label>Tipe sesi</label><select id="inp-sesi" onchange="renderInputList()"><option value="seminar">Seminar</option><option value="sidang">Sidang</option><option value="proses">Proses (Pembimbing)</option></select></div>
+          </div>
+          <div id="inp-list"></div>
+        </div>
+        <div class="card" id="inp-form-card" style="display:none">
+          <div class="card-title" id="inp-form-title"></div>
+          <div id="inp-form-body"></div>
+          <div style="display:flex;gap:8px;margin-top:14px;">
+            <button class="btn btn-primary" onclick="saveNilai()">💾 Simpan Nilai</button>
+            <button class="btn" onclick="document.getElementById('inp-form-card').style.display='none'">Batal</button>
+          </div>
+          <div id="inp-alert" style="margin-top:10px;display:none;"></div>
+        </div>
+      </div>
+
+      <div id="page-rekap" class="page">
+        <div class="card">
+          <div class="search-bar">
+            <input type="text" id="rekap-q" placeholder="Cari nama / NIM..." oninput="renderRekap()">
+            <select id="rekap-filter" onchange="renderRekap()"><option value="">Semua</option><option value="sidang">Ada Sidang</option><option value="seminar">Hanya Seminar</option><option value="belum">Belum ada nilai</option></select>
+            <select id="rekap-jenis" onchange="renderRekap()"><option value="">Semua jenis</option><option value="Individu">Individu</option><option value="Kelompok">Kelompok</option></select>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>ID / Jenis</th><th>Nama</th><th>NIM</th><th>Seminar</th><th>Sidang</th><th>Proses</th><th>Final</th><th>Grade</th></tr></thead>
+            <tbody id="rekap-tbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ TEMPLATE BERKAS ═══════════════ -->
+      <div id="page-template" class="page">
+        <div class="card">
+          <div class="card-title">Upload Template Berkas</div>
+          <div id="tmpl-alert"></div>
+          <div class="form-row">
+            <div class="form-group" style="margin:0"><label>Nama template</label><input type="text" id="tmpl-nama" placeholder="cth: Checklist Proposal Seminar 2025"></div>
+            <div class="form-group" style="margin:0">
+              <label>Jenis</label>
+              <select id="tmpl-jenis">
+                <option value="seminar">Template Seminar</option>
+                <option value="sidang">Template Sidang</option>
+              </select>
+            </div>
+          </div>
+          <label style="display:block;border:2px dashed #d4d1c9;border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:12px;" id="tmpl-drop-area">
+            <input type="file" id="tmpl-file" accept=".pdf,.docx,.xlsx" style="display:none" onchange="document.getElementById('tmpl-drop-text').textContent='✓ '+this.files[0].name">
+            <div style="font-size:28px;margin-bottom:8px;">📋</div>
+            <div id="tmpl-drop-text" style="font-size:13px;color:#888;">Klik untuk memilih file (PDF/DOCX/XLSX)</div>
+          </label>
+          <button class="btn btn-primary" onclick="uploadTemplate()">⬆ Upload Template</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Template yang sudah diupload</div>
+          <div id="tmpl-list"><div style="color:#888;font-size:13px;text-align:center;padding:20px;">Klik "Muat" untuk memuat data</div></div>
+          <div style="margin-top:12px;"><button class="btn" onclick="loadTemplateList()">🔄 Muat / Refresh</button></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ KELOLA AKUN USER ═══════════════ -->
+      <div id="page-users" class="page">
+        <div class="card" id="users-supabase-warn" style="background:#fef3d0;border-color:#f0c050;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">⚠️</span>
+            <div>
+              <div style="font-weight:600;font-size:13px;color:#7a5200;">Supabase belum terhubung</div>
+              <div style="font-size:12px;color:#7a5200;margin-top:2px;">Isi SUPABASE_URL dan SUPABASE_ANON_KEY di bagian bawah file untuk mengaktifkan fitur ini.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <span>Akun Mahasiswa</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" onclick="importAkunMhs()">⬆ Import dari Data TA</button>
+              <button class="btn btn-primary btn-sm" onclick="openUserModal('mahasiswa')">+ Tambah Akun</button>
+            </div>
+          </div>
+          <div id="users-mhs-alert"></div>
+          <div class="search-bar">
+            <input type="text" id="user-mhs-q" placeholder="Cari nama atau NIM..." oninput="renderUserTable('mahasiswa')">
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>NIM</th><th>Nama</th><th>Angkatan</th><th>Password</th><th>Aksi</th></tr></thead>
+              <tbody id="user-mhs-tbody"><tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Klik "Muat Akun" untuk memuat data dari Supabase</td></tr></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn" onclick="loadUsers('mahasiswa')">🔄 Muat / Refresh</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Akun Dosen</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" onclick="importAkunDosen()">⬆ Import dari Data Dosen</button>
+              <button class="btn btn-primary btn-sm" onclick="openUserModal('dosen')">+ Tambah Akun</button>
+            </div>
+          </div>
+          <div id="users-dosen-alert"></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Inisial</th><th>Nama</th><th>Password</th><th>Aksi</th></tr></thead>
+              <tbody id="user-dosen-tbody"><tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Klik "Muat Akun" untuk memuat data dari Supabase</td></tr></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn" onclick="loadUsers('dosen')">🔄 Muat / Refresh</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODALS -->
+<div class="modal-overlay hidden" id="modal-mhs">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeModal('modal-mhs')">×</button>
+    <div class="modal-title" id="modal-mhs-title">Tambah Sesi TA</div>
+    <input type="hidden" id="mhs-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label>Jenis</label><select id="mhs-jenis-inp" onchange="toggleMhs2()"><option value="Individu">Individu</option><option value="Kelompok">Kelompok</option></select></div>
+      <div class="form-group"><label>ID Sesi (kosong = otomatis)</label><input type="text" id="mhs-id-inp" placeholder="cth: Ind26 / Kel24"></div>
+    </div>
+    <div style="background:#F7F6F3;border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:600;color:#666;margin-bottom:10px;text-transform:uppercase">Mahasiswa 1</div>
+      <div class="form-row" style="margin:0"><div class="form-group" style="margin:0"><label>Nama Lengkap</label><input type="text" id="mhs1-nama" placeholder="Nama lengkap mahasiswa..."></div><div class="form-group" style="margin:0"><label>NIM</label><input type="text" id="mhs1-nim" placeholder="231022XXXXX"></div></div>
+    </div>
+    <div id="mhs2-block" style="background:#F7F6F3;border-radius:10px;padding:14px;margin-bottom:12px;display:none;">
+      <div style="font-size:11px;font-weight:600;color:#666;margin-bottom:10px;text-transform:uppercase">Mahasiswa 2 (Kelompok)</div>
+      <div class="form-row" style="margin:0"><div class="form-group" style="margin:0"><label>Nama Lengkap</label><input type="text" id="mhs2-nama" placeholder="Nama lengkap mahasiswa..."></div><div class="form-group" style="margin:0"><label>NIM</label><input type="text" id="mhs2-nim" placeholder="231022XXXXX"></div></div>
+    </div>
+    <div class="form-group"><label>Judul Tugas Akhir</label><textarea id="mhs-judul" placeholder="Judul lengkap TA..."></textarea></div>
+    <div class="form-row-3">
+      <div class="form-group" style="margin:0"><label>PS1 (Pembimbing 1)</label><select id="mhs-ps1-inp"></select></div>
+      <div class="form-group" style="margin:0"><label>PS2 — opsional</label><select id="mhs-ps2-inp"></select></div>
+      <div class="form-group" style="margin:0"><label>Penguji</label><select id="mhs-penguji-inp"></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-mhs')">Batal</button><button class="btn btn-primary" onclick="saveMhs()">💾 Simpan</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-del-mhs">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-del-mhs')">×</button>
+    <div class="modal-title">Hapus Sesi TA?</div>
+    <div style="font-size:13px;color:#555;" id="del-mhs-name"></div>
+    <div class="alert alert-danger" style="margin-top:10px;">Semua nilai untuk sesi ini juga akan dihapus.</div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-del-mhs')">Batal</button><button class="btn btn-danger" onclick="confirmDelMhs()">🗑 Hapus</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-dosen">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-dosen')">×</button>
+    <div class="modal-title" id="modal-dosen-title">Tambah Dosen</div>
+    <input type="hidden" id="dosen-edit-kode">
+    <div class="form-group"><label>Inisial (kode unik, maks 5 huruf)</label><input type="text" id="dosen-kode-inp" placeholder="cth: ABC" maxlength="5"></div>
+    <div class="form-group"><label>Nama Lengkap + Gelar</label><input type="text" id="dosen-nama-inp" placeholder="Dr. Nama Lengkap, M.Si."></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-dosen')">Batal</button><button class="btn btn-primary" onclick="saveDosen()">💾 Simpan</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-del-dosen">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-del-dosen')">×</button>
+    <div class="modal-title">Hapus Dosen?</div>
+    <div style="font-size:13px;color:#555;" id="del-dosen-name"></div>
+    <div class="alert alert-danger" style="margin-top:10px;">Pastikan dosen ini tidak terdaftar sebagai PS1/PS2/Penguji di sesi TA manapun.</div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-del-dosen')">Batal</button><button class="btn btn-danger" onclick="confirmDelDosen()">🗑 Hapus</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-jadwal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-jadwal')">×</button>
+    <div class="modal-title" id="modal-jadwal-title">Edit Jadwal</div>
+    <input type="hidden" id="jadwal-edit-id"><input type="hidden" id="jadwal-edit-tab">
+    <div style="font-size:13px;font-weight:500;color:#555;margin-bottom:14px;" id="jadwal-edit-mhs"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Tanggal</label><input type="date" id="jadwal-tgl-inp"></div>
+      <div class="form-group"><label>Jam</label><input type="text" id="jadwal-jam-inp" placeholder="cth: 09.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Ruangan</label><input type="text" id="jadwal-ruangan-inp" placeholder="cth: R. 306 Gd. Eka"></div>
+      <div class="form-group"><label>Status</label><select id="jadwal-status-inp"><option value="-">Belum dijadwalkan</option><option value="Fix">Fix</option><option value="Done">Done</option></select></div>
+    </div>
+    <div class="form-group"><label>Catatan</label><textarea id="jadwal-catatan-inp" placeholder="Catatan tambahan, link Teams, dll..."></textarea></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-jadwal')">Batal</button><button class="btn btn-primary" onclick="saveJadwal()">💾 Simpan Jadwal</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-bobot">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-bobot')">×</button>
+    <div class="modal-title" id="modal-bobot-title">Edit Bobot</div>
+    <input type="hidden" id="bobot-edit-type">
+    <div id="bobot-form-body"></div>
+    <div style="font-size:12px;color:#e67e22;margin-top:6px;" id="bobot-warning"></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-bobot')">Batal</button><button class="btn btn-primary" onclick="saveBobot()">💾 Simpan</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-grade">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-grade')">×</button>
+    <div class="modal-title">Edit Batas Grade</div>
+    <div id="grade-form-body"></div>
+    <div style="font-size:12px;color:#888;margin-top:6px;">Nilai minimal untuk mendapat grade tersebut.</div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-grade')">Batal</button><button class="btn btn-primary" onclick="saveGrade()">💾 Simpan</button></div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="modal-final">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-final')">×</button>
+    <div class="modal-title">Edit Bobot Nilai Final</div>
+    <p style="font-size:12px;color:#888;margin-bottom:14px;">Final = (w_Seminar × Seminar) + (w_Sidang × Sidang) + (w_Proses × Proses). Komponen yang belum ada nilainya akan diabaikan dan bobot dinormalisasi otomatis.</p>
+    <div class="form-group"><label>Bobot Seminar (%)</label><input type="number" id="bf-seminar" min="0" max="100" step="1" value="30" oninput="chkFinal()"></div>
+    <div class="form-group"><label>Bobot Sidang (%)</label><input type="number" id="bf-sidang" min="0" max="100" step="1" value="30" oninput="chkFinal()"></div>
+    <div class="form-group"><label>Bobot Proses (%)</label><input type="number" id="bf-proses" min="0" max="100" step="1" value="40" oninput="chkFinal()"></div>
+    <div style="font-size:12px;margin-top:4px;" id="bf-warning"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-final')">Batal</button>
+      <button class="btn btn-primary" onclick="saveFinal()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-formula">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-formula')">×</button>
+    <div class="modal-title" id="modal-formula-title">Edit Formula</div>
+    <input type="hidden" id="formula-edit-tipe">
+    <div class="form-group">
+      <label>Bobot Pembimbing (%)</label>
+      <input type="number" id="formula-pembimbing-inp" min="0" max="100" step="1" value="60" oninput="chkFormula()">
+    </div>
+    <div class="form-group">
+      <label>Bobot Penguji (%) — otomatis = 100 − Pembimbing</label>
+      <input type="number" id="formula-penguji-inp" min="0" max="100" step="1" value="40" readonly style="background:#F7F6F3;color:#888;">
+    </div>
+    <div style="font-size:12px;margin-top:4px;" id="formula-warning"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-formula')">Batal</button>
+      <button class="btn btn-primary" onclick="saveFormula()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── MULTI-ANGKATAN ──
+const META_KEY='ta_meta_v1';
+let currentAngkatan='2022';
+let DB={};
+
+function getAngkatanList(){try{const m=localStorage.getItem(META_KEY);return m?JSON.parse(m):['2022'];}catch(e){return['2022'];}}
+function saveAngkatanList(list){try{localStorage.setItem(META_KEY,JSON.stringify(list));}catch(e){}}
+function getStorageKey(ang){return'ta_'+ang+'_v1';}
+function loadDB(ang){try{const r=localStorage.getItem(getStorageKey(ang||currentAngkatan));return r?JSON.parse(r):null;}catch(e){return null;}}
+function saveDB(){try{localStorage.setItem(getStorageKey(currentAngkatan),JSON.stringify(DB));}catch(e){}}
+
+const DD={
+  AFN:"Dr. Afrina Andriani br Sebayang, M.Si.",AFZ:"Ahmad Fuad Zainuddin, S.E., M.Si.",
+  AMS:"Aminatus Sa'adah, S.Si., M.Si.",ARH:"Dr. Arif Rahman Hakim, M.Si.",
+  ASO:"Agus Sofian Eka Hidayat, M.Ed., M.Sc., FSAI.",AYS:"Ayomi Sasmito, S.Si., M.Sc.",
+  DKN:"Dr. Dian Kusumaningrum, M.Si.",FZS:"Faizah Sari, Ph.D.",
+  GEV:"Gravito Eko Virando, Ph.D.",HRN:"Hoirun Nisa, S.E., M.SI.",
+  MFA:"Dr. Muhammad Fandi Anshori, M.Si.",MLT:"Mey Lista Tauryawati, S.Si., M.Si.",
+  MYG:"Maydison Ginting, M.A., M.Sc., Ph.D.",MZS:"Maria Zefanya Sampe, M.Si., M.M.",
+  REW:"Redha Widarsyah, M.Sc. Ph.D.",ROF:"Rokhmat Febrianto, S.ST., M.T",
+  SAM:"Stanley Makalew, M.Sc.",SFY:"Dr. Safriyana, S.T.P., M.Si",
+  TJP:"Tjipto Juwono, Ph.D.",VAG:"Valantino Agus Sutomo, M.Si.",YFA:"Dr. Yeftanus Antonio, M.Si."
+};
+
+const DM=[
+  {id:"Ind01",jenis:"Individu",mhs:[{nama:"Adriano Fadlan Juwono",nim:"23102210001"}],ps1:"MZS",ps2:"MYG",penguji:"AFZ",judul:"Model Prediksi Probabilitas Gagal Bayar - GLM & Cox PH"},
+  {id:"Ind02",jenis:"Individu",mhs:[{nama:"Antoni Putra Gunawan",nim:"23101910015"}],ps1:"FZS",ps2:"MYG",penguji:"MLT",judul:"Fuzzy Time Markov Chain - Prediksi Inflasi Indonesia"},
+  {id:"Ind03",jenis:"Individu",mhs:[{nama:"Audric Ferdinand",nim:"23102210005"}],ps1:"MLT",ps2:"MYG",penguji:"AYS",judul:"Hybrid Markov Weighted Fuzzy Kernel TS untuk IHSG"},
+  {id:"Ind04",jenis:"Individu",mhs:[{nama:"Cavell Mintardi",nim:"23102210011"}],ps1:"DKN",ps2:null,penguji:"MLT",judul:"Cryptocurrency Return Forecasting - PCA & LSTM"},
+  {id:"Ind05",jenis:"Individu",mhs:[{nama:"Darren Nathaniel",nim:"23102210014"}],ps1:"YFA",ps2:null,penguji:"ASO",judul:"Copula-Based Approach to Flood Insurance Pricing"},
+  {id:"Ind06",jenis:"Individu",mhs:[{nama:"Dave Filbert Iglesias Lukman",nim:"23102210015"}],ps1:"FZS",ps2:"MYG",penguji:"DKN",judul:"Perbandingan Metode Konvensional & Statistik - Prediksi Penjualan PT XYZ"},
+  {id:"Ind07",jenis:"Individu",mhs:[{nama:"Gede Rollin Pratama",nim:"23102210020"}],ps1:"DKN",ps2:null,penguji:"MLT",judul:"Operational Efficiency Foreign Banks - Panel Data Regression"},
+  {id:"Ind08",jenis:"Individu",mhs:[{nama:"Gregorius Ethanael Irawan",nim:"23102210023"}],ps1:"FZS",ps2:"MYG",penguji:"VAG",judul:"Comparative Analysis Transformer Models - Indonesian News"},
+  {id:"Ind09",jenis:"Individu",mhs:[{nama:"Jocelyn Hester Xu",nim:"23102210028"}],ps1:"MZS",ps2:null,penguji:"AFZ",judul:"Multi-State Cox PH - Pembayaran Kredit Kendaraan"},
+  {id:"Ind10",jenis:"Individu",mhs:[{nama:"Kezia Valerie Daniella",nim:"23102210032"}],ps1:"AYS",ps2:"MYG",penguji:"MLT",judul:"Coalition & Competition in Indonesian Banking - Game Theory"},
+  {id:"Ind11",jenis:"Individu",mhs:[{nama:"Komang Juliantara",nim:"23102210034"}],ps1:"DKN",ps2:"MYG",penguji:"YFA",judul:"Model TAM dengan SNA - Petani Padi Lamongan"},
+  {id:"Ind12",jenis:"Individu",mhs:[{nama:"Michael Calvin Charmelino Wijaya",nim:"23102210035"}],ps1:"MZS",ps2:null,penguji:"MYG",judul:"Optimasi Voucher Targeting - CatBoost & XGBoost"},
+  {id:"Ind13",jenis:"Individu",mhs:[{nama:"Ni Luh Putu Widya Sari",nim:"23102210040"}],ps1:"MZS",ps2:null,penguji:"DKN",judul:"Early Warning System Risiko Inaktivitas POS - Random Survival Forest"},
+  {id:"Ind14",jenis:"Individu",mhs:[{nama:"Obadiah Theophilus Hermawan",nim:"23102210041"}],ps1:"YFA",ps2:null,penguji:"ARH",judul:"GP-3D-ETAS - Gaussian Process Aftershock Sequence Model"},
+  {id:"Ind15",jenis:"Individu",mhs:[{nama:"Pio Amory Lienaldi",nim:"23102210042"}],ps1:"DKN",ps2:"MYG",penguji:"MZS",judul:"Perbandingan WMA, SES, & Croston - Prediksi Persediaan"},
+  {id:"Ind16",jenis:"Individu",mhs:[{nama:"Priscilla Natalie Nurtanio",nim:"23102210043"}],ps1:"AYS",ps2:"YFA",penguji:"AFZ",judul:"Permodelan Mortalitas LC-X & STAR-X - Liabilitas Pensiun"},
+  {id:"Ind17",jenis:"Individu",mhs:[{nama:"Richard Daniel",nim:"23102210046"}],ps1:"AYS",ps2:null,penguji:"SFY",judul:"Vehicle Routing Problem with Time Windows - Crowdshipping"},
+  {id:"Ind18",jenis:"Individu",mhs:[{nama:"Sebastiana Laura Beat",nim:"23102210051"}],ps1:"MLT",ps2:null,penguji:"MYG",judul:"Fuzzy Time Series Saxena-Easo & Markov Chain - Inflasi"},
+  {id:"Ind19",jenis:"Individu",mhs:[{nama:"Selena Lishendra",nim:"23102210052"}],ps1:"FZS",ps2:"MYG",penguji:"MZS",judul:"Analisis Bias & Sentimen Musisi dalam Playlist Spotify"},
+  {id:"Ind20",jenis:"Individu",mhs:[{nama:"Sthepani Citasi Hanisti",nim:"23102210058"}],ps1:"DKN",ps2:null,penguji:"YFA",judul:"Altman Z-Score, OLR, & Decision Tree - Financial Distress"},
+  {id:"Ind21",jenis:"Individu",mhs:[{nama:"Theresa Angelina",nim:"23102210061"}],ps1:"MLT",ps2:null,penguji:"DKN",judul:"Dynamic Analysis Customer Payment - Hidden Markov Model"},
+  {id:"Ind22",jenis:"Individu",mhs:[{nama:"Vito Valentinus",nim:"23102210064"}],ps1:"FZS",ps2:"MYG",penguji:"GEV",judul:"Perbandingan LSTM & ARIMA - Prediksi Harga Ethereum"},
+  {id:"Ind23",jenis:"Individu",mhs:[{nama:"Winner Yeo",nim:"23102210065"}],ps1:"MLT",ps2:"TJP",penguji:"DKN",judul:"Fuzzy TS Hybrid - Forecasting Inflation Open Economy"},
+  {id:"Ind24",jenis:"Individu",mhs:[{nama:"Wiruina Yeshanara",nim:"23102210066"}],ps1:"FZS",ps2:"AFN",penguji:"AYS",judul:"Optimisasi Penanganan Undernutrition - AHP & LP"},
+  {id:"Ind25",jenis:"Individu",mhs:[{nama:"Raphael Theodore",nim:"23102010002"}],ps1:"MLT",ps2:"AYS",penguji:"MYG",judul:"Stock Price Crash Risk - DUVOL & NCSKEW"},
+  {id:"Kel01",jenis:"Kelompok",mhs:[{nama:"Ariel Tan Hamdani",nim:"23102210003"},{nama:"Kennard Kurniadi Hartono",nim:"23102210031"}],ps1:"MZS",ps2:"REW",penguji:"DKN",judul:"Analisis Sentimen Nature Based Tourism Bali - Naive Bayes & SVM"},
+  {id:"Kel02",jenis:"Kelompok",mhs:[{nama:"Arzu Nafiputra",nim:"23102210004"},{nama:"Yoan Erica",nim:"23102210067"}],ps1:"FZS",ps2:"AFN",penguji:"AYS",judul:"Forecasting IHSG Peak & Trough - Grey Models & Fourier Series"},
+  {id:"Kel03",jenis:"Kelompok",mhs:[{nama:"Aurelia Feodora Wely",nim:"23102210006"},{nama:"Yohana Joevanca Kurniawan",nim:"23102210069"}],ps1:"MZS",ps2:null,penguji:"DKN",judul:"Analisa Preferensi Sunscreen - Naive Bayes & Lexicon-Contextual"},
+  {id:"Kel04",jenis:"Kelompok",mhs:[{nama:"Avril Lawrencia",nim:"23102210007"},{nama:"Valencia Lovynes Wangsa",nim:"23102210063"}],ps1:"AYS",ps2:null,penguji:"SFY",judul:"3D Bin Packing - Gorilla Troops Optimizer"},
+  {id:"Kel05",jenis:"Kelompok",mhs:[{nama:"Axel Yoel Chandra",nim:"23102210008"},{nama:"Ingrid Violin",nim:"23102210026"}],ps1:"YFA",ps2:null,penguji:"MZS",judul:"Bayesian Approach - Tarif Kredit Berbasis Risiko Batubara"},
+  {id:"Kel06",jenis:"Kelompok",mhs:[{nama:"Bryan Chaprio",nim:"23102210009"},{nama:"Theodore Noah Lie",nim:"23102210060"}],ps1:"YFA",ps2:"AYS",penguji:"MZS",judul:"Analisis ROI Pemain NBA - Ensemble Walrus Optimizer"},
+  {id:"Kel07",jenis:"Kelompok",mhs:[{nama:"Camelia Miftahur Rizki Kiem Hwa",nim:"23102210010"},{nama:"Rosa Maeni Mutianti",nim:"23102210049"}],ps1:"AYS",ps2:null,penguji:"AMS",judul:"Analisis Kestabilan Model Matematika Perundungan di Sekolah"},
+  {id:"Kel08",jenis:"Kelompok",mhs:[{nama:"Cody Minoru Yodianto",nim:"23102210012"},{nama:"Felix Jonathan",nim:"23102210018"}],ps1:"AYS",ps2:"YFA",penguji:"DKN",judul:"Hacker News Sentiment on AMD Stock Returns - Hybrid ML"},
+  {id:"Kel09",jenis:"Kelompok",mhs:[{nama:"Daniel Lius Bernardi",nim:"23102210013"},{nama:"Raymond Santiago",nim:"23102210044"}],ps1:"YFA",ps2:"AYS",penguji:"GEV",judul:"GCN & Random Forest SMOTE-NC - Prediksi Kredit Macet BPR"},
+  {id:"Kel10",jenis:"Kelompok",mhs:[{nama:"Dyah Nuraprilia",nim:"23102210016"},{nama:"Kgs. M. Rifat Alfarisi",nim:"23102210033"}],ps1:"DKN",ps2:"ROF",penguji:"SAM",judul:"Prediksi Produktivitas Padi Berbasis UAV - Mahalanobis Distance"},
+  {id:"Kel11",jenis:"Kelompok",mhs:[{nama:"Felita Christy Kusmana",nim:"23102210017"},{nama:"Joycelyn",nim:"23102210029"}],ps1:"AYS",ps2:null,penguji:"MLT",judul:"Optimisasi Persediaan Stokastik - Grey Wolf Optimizer"},
+  {id:"Kel12",jenis:"Kelompok",mhs:[{nama:"Gabriella Loli Dominica Siregar",nim:"23102210019"},{nama:"Jasmine Kezia Efendy",nim:"23102210027"}],ps1:"YFA",ps2:"MYG",penguji:"MLT",judul:"Model Markov Orde Variabel & Bar-Cycle - Prediksi Nada Lagu Pop"},
+  {id:"Kel13",jenis:"Kelompok",mhs:[{nama:"Gilbert",nim:"23102210021"},{nama:"Kezia Agatha",nim:"23102210072"}],ps1:"AYS",ps2:null,penguji:"SFY",judul:"3D Bin Packing - Chaotic Northern Goshawk Optimizer"},
+  {id:"Kel14",jenis:"Kelompok",mhs:[{nama:"Glenesha Audry Khoman",nim:"23102210022"},{nama:"Stephanie Angelica Gunawan",nim:"23102210057"}],ps1:"MZS",ps2:null,penguji:"AYS",judul:"RNN vs LSTM - Sentiment Analysis Program Makan Bergizi Gratis"},
+  {id:"Kel15",jenis:"Kelompok",mhs:[{nama:"Iftha Nikmatul Khasanah",nim:"23102210024"},{nama:"Riyadi Iman Lubis",nim:"23102210048"}],ps1:"MLT",ps2:null,penguji:"MZS",judul:"Hybrid CLARA & FTS Markov Chain - Prediksi Harga Minyak"},
+  {id:"Kel16",jenis:"Kelompok",mhs:[{nama:"Indah Tamara Aulia Nainggolan",nim:"23102210025"},{nama:"Mina Darmayani",nim:"23102210038"}],ps1:"MLT",ps2:null,penguji:"MYG",judul:"Hybrid FTS-Markov Chain dengan PSO - Prediksi Saham CPIN"},
+  {id:"Kel17",jenis:"Kelompok",mhs:[{nama:"Karina Affandi",nim:"23102210030"},{nama:"Yuhanda Tri Wulandari",nim:"23102210070"}],ps1:"MLT",ps2:"MZS",penguji:"AYS",judul:"FTS Markov Chain dengan Algoritma Genetika - Saham KLBF & KAEF"},
+  {id:"Kel18",jenis:"Kelompok",mhs:[{nama:"Michelle Intan Handa",nim:"23102210036"},{nama:"Shevadyna Putrivalen",nim:"23102210054"}],ps1:"DKN",ps2:"AFZ",penguji:"YFA",judul:"Risiko Asuransi Pertanian Berbasis NDVI - Gamma GLM & Monte Carlo"},
+  {id:"Kel19",jenis:"Kelompok",mhs:[{nama:"Nathasya Avrilia",nim:"23102210039"},{nama:"Shan Savera",nim:"23102210053"}],ps1:"YFA",ps2:"MFA",penguji:"HRN",judul:"Risiko Sistemik Perbankan - Jaringan Probabilistik & Makroprudensial"},
+  {id:"Kel20",jenis:"Kelompok",mhs:[{nama:"Raymond Tjandra",nim:"23102210045"},{nama:"Temmy Sugiarto",nim:"23102210059"}],ps1:"YFA",ps2:"AYS",penguji:"VAG",judul:"Network-Based Analytics - Football Individual & Team Performance"},
+  {id:"Kel21",jenis:"Kelompok",mhs:[{nama:"Rino Riyadi Wana",nim:"23102210047"},{nama:"Pieter Realino",nim:"23102210071"}],ps1:"MLT",ps2:null,penguji:"MYG",judul:"Regime Based Expected Return Forecasting - Cryptocurrency Hidden Markov"},
+  {id:"Kel22",jenis:"Kelompok",mhs:[{nama:"Siti Ummi Kaltsum",nim:"23102210056"},{nama:"Yoghi Pratama Putra",nim:"23102210068"}],ps1:"MZS",ps2:null,penguji:"AYS",judul:"Food Delivery Dynamic Pricing - Ensemble LR & DNN"},
+  {id:"Kel23",jenis:"Kelompok",mhs:[{nama:"Tiur Masayu Rahmadani",nim:"23102210062"},{nama:"Siti Nur Fatimah",nim:"23102210055"}],ps1:"FZS",ps2:"MLT",penguji:"YFA",judul:"FTS Markov Chain Granular Computing - Saham BBCA & BBRI"},
+];
+
+function mkSem(d){return {tgl:d,jam:"",ruangan:"",status:"Fix",catatan:""};}
+function mkSid(d,s){return {tgl:d,jam:"",ruangan:"",status:s||"-",catatan:""};}
+const DJS={
+  Ind01:mkSem("2025-03-12"),Ind02:mkSem("2025-04-14"),Ind03:mkSem("2025-04-14"),Ind04:mkSem("2025-03-07"),
+  Ind05:mkSem("2025-03-06"),Ind06:mkSem("2025-03-09"),Ind07:mkSem("2025-04-15"),Ind08:mkSem("2025-03-10"),
+  Ind09:mkSem("2025-04-16"),Ind10:mkSem("2025-03-12"),Ind11:mkSem("2025-03-10"),Ind12:mkSem("2025-03-05"),
+  Ind13:mkSem("2025-04-17"),Ind14:mkSem("2025-01-21"),Ind15:mkSem("2025-04-14"),Ind16:mkSem("2025-02-12"),
+  Ind17:mkSem("2025-02-10"),Ind18:mkSem("2025-03-08"),Ind19:mkSem("2025-03-11"),Ind20:mkSem("2025-03-11"),
+  Ind21:mkSem("2025-03-12"),Ind22:mkSem("2025-03-07"),Ind23:mkSem("2025-02-04"),Ind24:mkSem("2025-03-07"),
+  Ind25:mkSem("2025-04-16"),Kel01:mkSem("2025-03-12"),Kel02:mkSem("2025-03-08"),Kel03:mkSem("2025-03-12"),
+  Kel04:mkSem("2025-03-10"),Kel05:mkSem("2025-03-12"),Kel06:mkSem("2025-03-10"),Kel07:mkSem("2025-01-17"),
+  Kel08:mkSem("2025-04-14"),Kel09:mkSem("2025-04-15"),Kel10:mkSem("2025-03-07"),Kel11:mkSem("2025-04-17"),
+  Kel12:mkSem("2025-03-11"),Kel13:mkSem("2025-02-11"),Kel14:mkSem("2025-03-11"),Kel15:mkSem("2025-02-12"),
+  Kel16:mkSem("2025-02-13"),Kel17:mkSem("2025-02-16"),Kel18:mkSem("2025-03-12"),Kel19:mkSem("2025-02-10"),
+  Kel20:mkSem("2025-03-11"),Kel21:mkSem("2025-03-08"),Kel22:mkSem("2025-03-10"),Kel23:mkSem("2025-02-04"),
+};
+const DJSd={
+  Ind01:mkSid("2025-05-07","Done"),Ind02:mkSid("2025-04-16","Done"),Ind03:mkSid("2025-04-28","Done"),
+  Ind04:mkSid("2025-04-17","Done"),Ind05:mkSid("2025-05-05","Done"),Ind06:mkSid("2025-04-19","Done"),
+  Ind07:mkSid("",""),Ind08:mkSid("2025-04-28","Done"),Ind09:mkSid("2025-04-18","Done"),
+  Ind10:mkSid("2025-04-28","Done"),Ind11:mkSid("2025-05-21","Done"),Ind12:mkSid("2025-03-27","Fix"),
+  Ind13:mkSid("",""),Ind14:mkSid("2025-05-05","Done"),Ind15:mkSid("",""),
+  Ind16:mkSid("2025-03-27","Fix"),Ind17:mkSid("2025-03-26","Fix"),Ind18:mkSid("2025-04-16","Done"),
+  Ind19:mkSid("2025-05-05","Done"),Ind20:mkSid("2025-04-27","Done"),Ind21:mkSid("2025-04-28","Done"),
+  Ind22:mkSid("2025-04-17","Done"),Ind23:mkSid("",""),Ind24:mkSid("2025-05-04","Done"),
+  Ind25:mkSid("2025-05-20","Done"),Kel01:mkSid("2025-05-19","Done"),Kel02:mkSid("2025-05-04","Done"),
+  Kel03:mkSid("2025-04-27","Done"),Kel04:mkSid("2025-04-27","Done"),Kel05:mkSid("2025-05-04","Done"),
+  Kel06:mkSid("2025-05-06","Done"),Kel07:mkSid("2025-03-28","Fix"),Kel08:mkSid("",""),
+  Kel09:mkSid("",""),Kel10:mkSid("2025-05-20","Done"),Kel11:mkSid("",""),
+  Kel12:mkSid("2025-05-07","Done"),Kel13:mkSid("2025-03-26","Fix"),Kel14:mkSid("2025-05-06","Done"),
+  Kel15:mkSid("2025-03-24","Fix"),Kel16:mkSid("2025-03-25","Fix"),Kel17:mkSid("2025-03-26","Fix"),
+  Kel18:mkSid("2025-05-21","Done"),Kel19:mkSid("2025-03-27","Fix"),Kel20:mkSid("2025-04-29","Done"),
+  Kel21:mkSid("2025-05-07","Done"),Kel22:mkSid("2025-05-07","Done"),Kel23:mkSid("2025-03-28","Fix"),
+};
+const DB0={seminar:{A1:0.20,A2:0.30,A3:0.15,A4:0.10,A5:0.25},sidang:{A1:0.35,A2:0.15,A3:0.15,A4:0.10,A5:0.25},proses:{B1:0.25,B2:0.40,B3:0.35},formula:{seminar:{pembimbing:0.60,penguji:0.40},sidang:{pembimbing:0.60,penguji:0.40}},bobot_final:{seminar:0.30,sidang:0.30,proses:0.40}};
+const SSL={A1:"Latar belakang/teori",A2:"Metode/persiapan",A3:"Tata bahasa",A4:"Presentasi",A5:"Menjawab pertanyaan"};
+const PL={B1:"Aktivitas",B2:"Kemandirian",B3:"Usaha/Ketekunan"};
+const DN0=[{grade:"A",min:80},{grade:"AB",min:75},{grade:"B",min:70},{grade:"BC",min:65},{grade:"C",min:55},{grade:"D",min:45},{grade:"E",min:0}];
+const NL0={
+  Ind01:{seminar:[{peran:'ps1',A1:82,A2:80,A3:78,A4:78,A5:75},{peran:'ps2',A1:70,A2:70,A3:70,A4:70,A5:70},{peran:'penguji',A1:75,A2:75,A3:75,A4:75,A5:75}]},
+  Ind02:{seminar:[{peran:'ps1',A1:70,A2:70,A3:70,A4:80,A5:80},{peran:'ps2',A1:65,A2:65,A3:65,A4:65,A5:65},{peran:'penguji',A1:68,A2:65,A3:65,A4:70,A5:68}]},
+  Ind03:{seminar:[{peran:'ps1',A1:78,A2:78,A3:79,A4:80,A5:82},{peran:'ps2',A1:80,A2:75,A3:70,A4:70,A5:75},{peran:'penguji',A1:67,A2:70,A3:68,A4:72,A5:71}]},
+  Ind04:{seminar:[{peran:'ps1',A1:80,A2:77,A3:73,A4:75,A5:70},{peran:'penguji',A1:80,A2:75,A3:75,A4:80,A5:73}]},
+  Ind05:{seminar:[{peran:'ps1',A1:85,A2:82,A3:78,A4:85,A5:88},{peran:'penguji',A1:85,A2:82,A3:85,A4:83,A5:85}]},
+  Ind06:{seminar:[{peran:'ps1',A1:75,A2:75,A3:75,A4:80,A5:75},{peran:'ps2',A1:75,A2:75,A3:75,A4:80,A5:75},{peran:'penguji',A1:70,A2:70,A3:67,A4:70,A5:65}]},
+  Ind07:{seminar:[{peran:'ps1',A1:75,A2:75,A3:75,A4:75,A5:72},{peran:'penguji',A1:73,A2:75,A3:75,A4:76,A5:72}]},
+  Ind08:{seminar:[{peran:'ps1',A1:90,A2:90,A3:85,A4:100,A5:100},{peran:'ps2',A1:85,A2:90,A3:90,A4:95,A5:90},{peran:'penguji',A1:100,A2:83,A3:67,A4:100,A5:100}]},
+  Ind09:{seminar:[{peran:'ps1',A1:82,A2:80,A3:80,A4:81,A5:80},{peran:'penguji',A1:80,A2:80,A3:80,A4:75,A5:75}]},
+  Ind10:{seminar:[{peran:'ps1',A1:93,A2:92,A3:91,A4:82,A5:83},{peran:'ps2',A1:85,A2:85,A3:80,A4:80,A5:85},{peran:'penguji',A1:82,A2:83,A3:83,A4:78,A5:78}]},
+  Ind11:{seminar:[{peran:'ps1',A1:78,A2:72,A3:75,A4:80,A5:78},{peran:'ps2',A1:80,A2:75,A3:80,A4:80,A5:72},{peran:'penguji',A1:82,A2:70,A3:72,A4:78,A5:70}]},
+  Ind12:{seminar:[{peran:'ps1',A1:92,A2:90,A3:86,A4:88,A5:85},{peran:'penguji',A1:90,A2:85,A3:90,A4:85,A5:85}]},
+  Ind13:{seminar:[{peran:'ps1',A1:78,A2:75,A3:75,A4:80,A5:81},{peran:'penguji',A1:72,A2:70,A3:70,A4:70,A5:65}]},
+  Ind14:{seminar:[{peran:'ps1',A1:90,A2:93,A3:90,A4:95,A5:93},{peran:'penguji',A1:85,A2:95,A3:80,A4:85,A5:90}]},
+  Ind15:{seminar:[{peran:'ps1',A1:80,A2:80,A3:78,A4:80,A5:75},{peran:'ps2',A1:70,A2:70,A3:70,A4:70,A5:70},{peran:'penguji',A1:75,A2:70,A3:75,A4:78,A5:72}]},
+  Ind16:{seminar:[{peran:'ps1',A1:93,A2:90,A3:90,A4:80,A5:80},{peran:'ps2',A1:80,A2:82,A3:82,A4:80,A5:80},{peran:'penguji',A1:75,A2:70,A3:80,A4:80,A5:75}]},
+  Ind17:{seminar:[{peran:'ps1',A1:90,A2:85,A3:78,A4:88,A5:82},{peran:'penguji',A1:87,A2:90,A3:85,A4:90,A5:80}]},
+  Ind18:{seminar:[{peran:'ps1',A1:83,A2:83,A3:83,A4:83,A5:80},{peran:'penguji',A1:80,A2:80,A3:75,A4:75,A5:80}]},
+  Ind19:{seminar:[{peran:'ps1',A1:78,A2:70,A3:78,A4:80,A5:70},{peran:'ps2',A1:78,A2:70,A3:78,A4:80,A5:70},{peran:'penguji',A1:68,A2:70,A3:68,A4:70,A5:70}]},
+  Ind20:{seminar:[{peran:'ps1',A1:80,A2:78,A3:75,A4:80,A5:78},{peran:'penguji',A1:70,A2:70,A3:70,A4:82,A5:80}]},
+  Ind21:{seminar:[{peran:'ps1',A1:83,A2:83,A3:80,A4:80,A5:82},{peran:'penguji',A1:80,A2:80,A3:80,A4:78,A5:82}]},
+  Ind22:{seminar:[{peran:'ps1',A1:80,A2:80,A3:80,A4:90,A5:80},{peran:'ps2',A1:80,A2:75,A3:75,A4:75,A5:70},{peran:'penguji',A1:80,A2:85,A3:80,A4:85,A5:85}]},
+  Ind23:{seminar:[{peran:'ps1',A1:80,A2:80,A3:80,A4:79,A5:82},{peran:'ps2',A1:85,A2:85,A3:85,A4:87,A5:85},{peran:'penguji',A1:70,A2:70,A3:72,A4:80,A5:85}]},
+  Ind24:{seminar:[{peran:'ps1',A1:80,A2:85,A3:90,A4:95,A5:90},{peran:'ps2',A1:85,A2:87,A3:82,A4:90,A5:84},{peran:'penguji',A1:72,A2:80,A3:87,A4:80,A5:80}]},
+};
+
+function initDB(ang){
+  if(ang) currentAngkatan=ang;
+  const s=loadDB();
+  if(s){
+    DB=s;
+    if(!DB.bobot.formula){DB.bobot.formula=JSON.parse(JSON.stringify(DB0.formula));saveDB();}
+    if(!DB.bobot.bobot_final){DB.bobot.bobot_final=JSON.parse(JSON.stringify(DB0.bobot_final));saveDB();}
+    const hasAB=DB.grade.some(g=>g.grade==='AB');
+    if(!hasAB){DB.grade=JSON.parse(JSON.stringify(DN0));saveDB();}
+  } else {
+    // Angkatan 2022 pakai data default, angkatan lain mulai kosong
+    const isDefault=(currentAngkatan==='2022');
+    DB={
+      dosen:{...DD},
+      master:isDefault?JSON.parse(JSON.stringify(DM)):[],
+      jadwal_seminar:isDefault?JSON.parse(JSON.stringify(DJS)):{},
+      jadwal_sidang:isDefault?JSON.parse(JSON.stringify(DJSd)):{},
+      bobot:JSON.parse(JSON.stringify(DB0)),
+      grade:JSON.parse(JSON.stringify(DN0)),
+      nilai:isDefault?JSON.parse(JSON.stringify(NL0)):{}
+    };
+    saveDB();
+  }
+  updateSidebarAngkatan();
+}
+function switchAngkatan(ang){
+  currentAngkatan=ang;
+  initDB(ang);
+  // refresh semua halaman
+  renderDashboard();
+  document.getElementById('topbar-sub').textContent='Sistem Penilaian Tugas Akhir S1 — Angkatan '+ang;
+  document.getElementById('topbar-title').textContent='Dashboard';
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-dashboard').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.nav-item').classList.add('active');
+  if(currentAngkatan==='mhs'){populateMhsPS1();renderMhs();}
+}
+function updateSidebarAngkatan(){
+  const list=getAngkatanList();
+  let html='';
+  list.forEach(a=>{
+    html+=`<button class="nav-item ${a===currentAngkatan?'ang-active':''}" style="${a===currentAngkatan?'background:rgba(110,102,220,0.35);color:#fff;':'color:rgba(255,255,255,0.55)'}" onclick="switchAngkatan('${a}')">📚 Angkatan ${a}</button>`;
+  });
+  html+=`<button class="nav-item" style="color:rgba(255,255,255,0.4);font-size:12px" onclick="openAngkatanModal()">+ Tambah Angkatan</button>`;
+  document.getElementById('angkatan-list').innerHTML=html;
+  document.getElementById('sidebar-angkatan-label').textContent='Angkatan '+currentAngkatan;
+}
+
+function fmtDate(d){if(!d)return'-';try{return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d;}}
+function calcSS(rows,bobot,tipe,mhsIdx){
+  if(!rows||!rows.length)return null;
+  const r2=(mhsIdx!==undefined)?rows.filter(r=>r.mhsIdx===mhsIdx||r.mhsIdx===undefined):rows;
+  let pb1=null,pb2=null,pg=null;
+  r2.forEach(r=>{if(r.peran==='ps1')pb1=r;else if(r.peran==='ps2')pb2=r;else if(r.peran==='penguji')pg=r;});
+  const sr=r=>{if(!r)return null;if(![r.A1,r.A2,r.A3,r.A4,r.A5].some(x=>x>0))return null;return bobot.A1*(r.A1||0)+bobot.A2*(r.A2||0)+bobot.A3*(r.A3||0)+bobot.A4*(r.A4||0)+bobot.A5*(r.A5||0);};
+  let s1=sr(pb1),s2=sr(pb2),sp=sr(pg);
+  if(s1===null&&s2===null)return null;
+  let avg=(s1!==null&&s2!==null)?(s1+s2)/2:(s1!==null?s1:s2);
+  const f=(DB.bobot.formula&&DB.bobot.formula[tipe])||{pembimbing:0.60,penguji:0.40};
+  return parseFloat((f.pembimbing*avg+(sp!==null?f.penguji*sp:f.penguji*avg)).toFixed(2));
+}
+function calcP(rows,mhsIdx){
+  if(!rows||!rows.length)return null;
+  const r2=(mhsIdx!==undefined)?rows.filter(r=>r.mhsIdx===mhsIdx||r.mhsIdx===undefined):rows;
+  const sc=r2.map(r=>DB.bobot.proses.B1*(r.B1||0)+DB.bobot.proses.B2*(r.B2||0)+DB.bobot.proses.B3*(r.B3||0));
+  if(!sc.some(x=>x>0))return null;
+  return parseFloat((sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(2));
+}
+function getFinal(id,mhsIdx){
+  const s=DB.nilai[id]||{};
+  const mi=(mhsIdx!==undefined)?mhsIdx:0;
+  const sm=calcSS(s.seminar,DB.bobot.seminar,'seminar',mi);
+  const sd=calcSS(s.sidang,DB.bobot.sidang,'sidang',mi);
+  const pr=calcP(s.proses,mi);
+  const bf=(DB.bobot.bobot_final)||{seminar:0.30,sidang:0.30,proses:0.40};
+  let num=0,den=0;
+  if(sm!==null){num+=bf.seminar*sm;den+=bf.seminar;}
+  if(sd!==null){num+=bf.sidang*sd;den+=bf.sidang;}
+  if(pr!==null){num+=bf.proses*pr;den+=bf.proses;}
+  const final=den>0?parseFloat((num/den).toFixed(2)):null;
+  return{seminar:sm,sidang:sd,proses:pr,final};
+}
+function getGrade(sc){
+  if(sc===null||sc===undefined)return null;
+  const s=[...DB.grade].sort((a,b)=>b.min-a.min);
+  for(const g of s)if(sc>=g.min)return g.grade;
+  return'E';
+}
+function gBadge(g){if(!g)return'<span class="badge badge-none">-</span>';const c={A:'badge-a',AB:'badge-ab',B:'badge-b',BC:'badge-bc',C:'badge-c',D:'badge-d',E:'badge-e'}[g]||'badge-none';return`<span class="badge ${c}">${g}</span>`;}
+function dosenSel(sel,v='',empty=false){
+  sel.innerHTML=(empty?'<option value="">— Tidak ada —</option>':'')+Object.entries(DB.dosen).sort((a,b)=>a[1].localeCompare(b[1])).map(([k,n])=>`<option value="${k}"${k===v?' selected':''}>${k} — ${n.split(',')[0]}</option>`).join('');
+}
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+function showPage(p,el){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  if(el)el.classList.add('active');
+  const T={dashboard:'Dashboard',mhs:'Mahasiswa & Tugas Akhir',dosen:'Dosen',bobot:'Bobot & Formula',jadwal:'Jadwal',input:'Input Nilai',rekap:'Rekap Nilai',template:'Template Berkas',users:'Kelola Akun'};
+  document.getElementById('topbar-title').textContent=T[p]||p;
+  if(p==='dashboard')renderDashboard();
+  if(p==='mhs'){populateMhsPS1();renderMhs();}
+  if(p==='dosen')renderDosen();
+  if(p==='bobot')renderBobot();
+  if(p==='jadwal')renderJadwal();
+  if(p==='input')renderInputList();
+  if(p==='rekap')renderRekap();
+  if(p==='users')initUsersPage();
+  if(p==='template')loadTemplateList();
+}
+
+function renderDashboard(){
+  const T=DB.master.length;let hSd=0,hSm=0,hPr=0;const G={A:0,AB:0,B:0,BC:0,C:0,D:0,E:0,'-':0};
+  DB.master.forEach(m=>{m.mhs.forEach((mh,mi)=>{const f=getFinal(m.id,mi);if(f.sidang!==null)hSd++;if(f.seminar!==null)hSm++;if(f.proses!==null)hPr++;const g=getGrade(f.final)||'-';G[g]=(G[g]||0)+1;});});
+  document.getElementById('dash-metrics').innerHTML=`<div class="metric"><div class="metric-label">Total sesi</div><div class="metric-value">${T}</div><div class="metric-sub">${DB.master.filter(m=>m.jenis==='Individu').length} individu · ${DB.master.filter(m=>m.jenis==='Kelompok').length} kelompok</div></div><div class="metric"><div class="metric-label">Nilai sidang masuk</div><div class="metric-value">${hSd}</div><div class="metric-sub">dari ${T} sesi</div></div><div class="metric"><div class="metric-label">Nilai seminar masuk</div><div class="metric-value">${hSm}</div><div class="metric-sub">dari ${T} sesi</div></div><div class="metric"><div class="metric-label">Total dosen</div><div class="metric-value">${Object.keys(DB.dosen).length}</div><div class="metric-sub">aktif dalam sistem</div></div>`;
+  document.getElementById('dash-progress').innerHTML=[{l:'Seminar',c:hSm},{l:'Sidang',c:hSd},{l:'Proses',c:hPr}].map(p=>{const pct=Math.round(p.c/T*100);return`<div style="margin-bottom:13px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>${p.l}</span><span style="color:#888">${p.c}/${T} (${pct}%)</span></div><div class="progress-wrap"><div class="progress-bar" style="width:${pct}%;background:#6E66DC"></div></div></div>`;}).join('');
+  const GC={A:'#1a6b25',AB:'#2e8b57',B:'#185FA5',BC:'#5a3d9e',C:'#7a5200',D:'#8a1a1a',E:'#555','-':'#bbb'};
+  document.getElementById('dash-grades').innerHTML=Object.entries(G).filter(([,c])=>c>0).map(([g,c])=>{const pct=Math.round(c/T*100);return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${gBadge(g==='-'?null:g)}<div style="flex:1"><div class="progress-wrap"><div class="progress-bar" style="width:${pct}%;background:${GC[g]||'#aaa'}"></div></div></div><span style="font-size:12px;color:#888;min-width:20px">${c}</span></div>`;}).join('')||'<div style="color:#888;font-size:13px">Belum ada data</div>';
+  let inc='';DB.master.forEach(m=>{m.mhs.forEach((mh,mi)=>{const f=getFinal(m.id,mi);if(f.final===null){inc+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0eee8;font-size:13px;"><span><span class="tag">${m.id}</span>${mh.nama}</span><span style="font-size:11px;color:#888">${m.jenis}</span></div>`;}});});
+  document.getElementById('dash-incomplete').innerHTML=inc||'<div class="alert alert-success">✅ Semua sesi sudah memiliki nilai!</div>';
+  // Widget kehadiran & bimbingan (async, dari Supabase)
+  renderDashboardKehadiran();
+  renderDashboardBimbingan();
+}
+
+let delMhsId=null;
+function populateMhsPS1(){
+  const s=document.getElementById('mhs-pembimbing');
+  s.innerHTML='<option value="">Semua Pembimbing</option>';
+  // Gabungkan semua pembimbing (PS1 dan PS2), sorted by nama
+  const allPb=new Set([...DB.master.map(m=>m.ps1),...DB.master.filter(m=>m.ps2).map(m=>m.ps2)]);
+  [...allPb].sort((a,b)=>(DB.dosen[a]||a).localeCompare(DB.dosen[b]||b)).forEach(k=>{
+    s.innerHTML+=`<option value="${k}">${k} — ${(DB.dosen[k]||'').split(',')[0]}</option>`;
+  });
+}
+function renderMhs(){
+  const q=(document.getElementById('mhs-q').value||'').toLowerCase(),jf=document.getElementById('mhs-jenis').value,pbf=document.getElementById('mhs-pembimbing').value;
+  let html='',no=1;
+  DB.master.forEach(m=>{
+    const nl=m.mhs.map(x=>x.nama).join(' & '),niml=m.mhs.map(x=>x.nim).join(' & ');
+    if(q&&![nl,niml,m.judul,m.ps1,m.ps2||'',m.penguji].some(s=>s.toLowerCase().includes(q)))return;
+    if(jf&&m.jenis!==jf)return;
+    if(pbf&&m.ps1!==pbf&&m.ps2!==pbf)return;  // cocok PS1 atau PS2
+    const f=getFinal(m.id,0),g=getGrade(f.final),jB=m.jenis==='Individu'?'badge-ind':'badge-kel'; // nilai mhs[0] untuk preview di tabel master
+    const nr=m.mhs.map((mh,i)=>`<div style="font-size:13px${i>0?';margin-top:3px':''}">${mh.nama}</div><div style="font-size:11px;color:#888">${mh.nim}</div>`).join('');
+    html+=`<tr><td style="color:#888;font-size:12px">${no++}</td><td><span class="tag">${m.id}</span><br><span class="badge ${jB}" style="font-size:10px;margin-top:3px">${m.jenis}</span></td><td style="min-width:140px">${nr}</td><td style="font-size:11px;color:#888">${niml}</td><td style="font-size:12px;max-width:200px;white-space:normal;line-height:1.4;color:#333">${m.judul}</td><td><span class="tag">${m.ps1}</span></td><td>${m.ps2?`<span class="tag">${m.ps2}</span>`:'-'}</td><td><span class="tag">${m.penguji}</span></td><td style="font-weight:500">${f.final!==null?f.final.toFixed(2):'-'}</td><td>${gBadge(g)}</td><td><div class="action-btns"><button class="btn btn-sm btn-icon" onclick="openMhsModal('${m.id}')" title="Edit">✏️</button><button class="btn btn-sm btn-icon btn-danger" onclick="openDelMhs('${m.id}')" title="Hapus">🗑</button></div></td></tr>`;
+  });
+  document.getElementById('mhs-tbody').innerHTML=html||'<tr><td colspan="11" style="text-align:center;color:#888;padding:20px">Tidak ada data</td></tr>';
+}
+function openMhsModal(id=null){
+  const isE=!!id;document.getElementById('modal-mhs-title').textContent=isE?'Edit Sesi TA':'Tambah Sesi TA';
+  document.getElementById('mhs-edit-id').value=id||'';
+  dosenSel(document.getElementById('mhs-ps1-inp'),isE?(DB.master.find(x=>x.id===id)||{}).ps1||'':'');
+  dosenSel(document.getElementById('mhs-ps2-inp'),isE?(DB.master.find(x=>x.id===id)||{}).ps2||'':'',true);
+  dosenSel(document.getElementById('mhs-penguji-inp'),isE?(DB.master.find(x=>x.id===id)||{}).penguji||'':'');
+  if(isE){const m=DB.master.find(x=>x.id===id);document.getElementById('mhs-id-inp').value=m.id;document.getElementById('mhs-jenis-inp').value=m.jenis;document.getElementById('mhs1-nama').value=m.mhs[0]?.nama||'';document.getElementById('mhs1-nim').value=m.mhs[0]?.nim||'';document.getElementById('mhs2-nama').value=m.mhs[1]?.nama||'';document.getElementById('mhs2-nim').value=m.mhs[1]?.nim||'';document.getElementById('mhs-judul').value=m.judul;}
+  else{document.getElementById('mhs-id-inp').value='';document.getElementById('mhs-jenis-inp').value='Individu';['mhs1-nama','mhs1-nim','mhs2-nama','mhs2-nim','mhs-judul'].forEach(i=>document.getElementById(i).value='');}
+  toggleMhs2();openModal('modal-mhs');
+}
+function toggleMhs2(){document.getElementById('mhs2-block').style.display=document.getElementById('mhs-jenis-inp').value==='Kelompok'?'block':'none';}
+function saveMhs(){
+  const eId=document.getElementById('mhs-edit-id').value,jenis=document.getElementById('mhs-jenis-inp').value;
+  let id=document.getElementById('mhs-id-inp').value.trim();
+  const n1=document.getElementById('mhs1-nama').value.trim(),nim1=document.getElementById('mhs1-nim').value.trim();
+  const n2=document.getElementById('mhs2-nama').value.trim(),nim2=document.getElementById('mhs2-nim').value.trim();
+  const judul=document.getElementById('mhs-judul').value.trim(),ps1=document.getElementById('mhs-ps1-inp').value;
+  const ps2=document.getElementById('mhs-ps2-inp').value||null,penguji=document.getElementById('mhs-penguji-inp').value;
+  if(!n1||!nim1||!judul||!ps1||!penguji){alert('Lengkapi: Nama 1, NIM 1, Judul, PS1, dan Penguji.');return;}
+  if(!id){if(!eId){const pf=jenis==='Individu'?'Ind':'Kel';const ex=DB.master.filter(m=>m.id.startsWith(pf)).map(m=>parseInt(m.id.replace(pf,''))||0);id=pf+String((ex.length?Math.max(...ex):0)+1).padStart(2,'0');}else id=eId;}
+  const mhsArr=[{nama:n1,nim:nim1}];if(jenis==='Kelompok'&&n2&&nim2)mhsArr.push({nama:n2,nim:nim2});
+  const rec={id,jenis,mhs:mhsArr,ps1,ps2,penguji,judul};
+  if(eId){const i=DB.master.findIndex(x=>x.id===eId);if(i>-1)DB.master[i]=rec;}
+  else{DB.master.push(rec);if(!DB.jadwal_seminar[id])DB.jadwal_seminar[id]={tgl:'',jam:'',ruangan:'',status:'-',catatan:''};if(!DB.jadwal_sidang[id])DB.jadwal_sidang[id]={tgl:'',jam:'',ruangan:'',status:'-',catatan:''};}
+  saveDB();closeModal('modal-mhs');renderMhs();renderDashboard();
+}
+function openDelMhs(id){delMhsId=id;const m=DB.master.find(x=>x.id===id);document.getElementById('del-mhs-name').textContent=`${m.id} — ${m.mhs.map(x=>x.nama).join(' & ')}`;openModal('modal-del-mhs');}
+function confirmDelMhs(){if(!delMhsId)return;DB.master=DB.master.filter(x=>x.id!==delMhsId);delete DB.jadwal_seminar[delMhsId];delete DB.jadwal_sidang[delMhsId];delete DB.nilai[delMhsId];saveDB();closeModal('modal-del-mhs');renderMhs();renderDashboard();delMhsId=null;}
+
+let delDosenK=null;
+function renderDosen(){
+  const q=(document.getElementById('dosen-q').value||'').toLowerCase();let html='',no=1;
+  Object.entries(DB.dosen).sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,v])=>{
+    if(q&&!v.toLowerCase().includes(q)&&!k.toLowerCase().includes(q))return;
+    const p1=DB.master.filter(m=>m.ps1===k).length,p2=DB.master.filter(m=>m.ps2===k).length,pg=DB.master.filter(m=>m.penguji===k).length;
+    html+=`<tr><td style="color:#888">${no++}</td><td><div class="avatar">${k}</div></td><td style="font-weight:500">${v}</td><td style="text-align:center"><span class="badge badge-b">${p1}</span></td><td style="text-align:center"><span class="badge badge-none">${p2}</span></td><td style="text-align:center"><span class="badge badge-c">${pg}</span></td><td style="text-align:center;font-weight:600">${p1+p2+pg}</td><td><div class="action-btns"><button class="btn btn-sm btn-icon" onclick="openDosenModal('${k}')" title="Edit">✏️</button><button class="btn btn-sm btn-icon btn-danger" onclick="openDelDosen('${k}')" title="Hapus">🗑</button></div></td></tr>`;
+  });
+  document.getElementById('dosen-tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:#888;padding:20px">Tidak ada data</td></tr>';
+}
+function openDosenModal(k=null){document.getElementById('modal-dosen-title').textContent=k?'Edit Dosen':'Tambah Dosen';document.getElementById('dosen-edit-kode').value=k||'';document.getElementById('dosen-kode-inp').value=k||'';document.getElementById('dosen-kode-inp').disabled=!!k;document.getElementById('dosen-nama-inp').value=k?(DB.dosen[k]||''):'';openModal('modal-dosen');}
+function saveDosen(){const eK=document.getElementById('dosen-edit-kode').value,k=document.getElementById('dosen-kode-inp').value.trim().toUpperCase(),n=document.getElementById('dosen-nama-inp').value.trim();if(!k||!n){alert('Inisial dan nama wajib diisi.');return;}if(!eK&&DB.dosen[k]){alert('Inisial sudah digunakan.');return;}if(eK)delete DB.dosen[eK];DB.dosen[k]=n;saveDB();closeModal('modal-dosen');renderDosen();}
+function openDelDosen(k){delDosenK=k;document.getElementById('del-dosen-name').textContent=`${k} — ${DB.dosen[k]}`;openModal('modal-del-dosen');}
+function confirmDelDosen(){if(!delDosenK)return;delete DB.dosen[delDosenK];saveDB();closeModal('modal-del-dosen');renderDosen();delDosenK=null;}
+
+function renderBobot(){
+  const rr=(b,lb)=>Object.entries(b).map(([k,v])=>`<tr><td><strong>${k}</strong></td><td>${lb[k]||''}</td><td><span class="badge badge-b">${Math.round(v*100)}%</span></td></tr>`).join('');
+  document.getElementById('bobot-seminar-tbody').innerHTML=rr(DB.bobot.seminar,SSL);
+  document.getElementById('bobot-sidang-tbody').innerHTML=rr(DB.bobot.sidang,SSL);
+  document.getElementById('bobot-proses-tbody').innerHTML=rr(DB.bobot.proses,PL);
+  document.getElementById('grade-tbody').innerHTML=[...DB.grade].sort((a,b)=>b.min-a.min).map(g=>`<tr><td>${gBadge(g.grade)}</td><td>≥ ${g.min}</td></tr>`).join('');
+  // Formula pembimbing/penguji
+  const fs=DB.bobot.formula||{seminar:{pembimbing:0.60,penguji:0.40},sidang:{pembimbing:0.60,penguji:0.40}};
+  const pSm=Math.round(fs.seminar.pembimbing*100),qSm=Math.round(fs.seminar.penguji*100);
+  const pSd=Math.round(fs.sidang.pembimbing*100),qSd=Math.round(fs.sidang.penguji*100);
+  if(document.getElementById('formula-seminar-label'))
+    document.getElementById('formula-seminar-label').innerHTML=`Hasil = <strong>${pSm}%</strong> rata-rata Pembimbing + <strong>${qSm}%</strong> Penguji`;
+  if(document.getElementById('formula-sidang-label'))
+    document.getElementById('formula-sidang-label').innerHTML=`Hasil = <strong>${pSd}%</strong> rata-rata Pembimbing + <strong>${qSd}%</strong> Penguji`;
+  // Bobot nilai final
+  const bf=DB.bobot.bobot_final||{seminar:0.30,sidang:0.30,proses:0.40};
+  const bSm=Math.round(bf.seminar*100),bSd=Math.round(bf.sidang*100),bPr=Math.round(bf.proses*100);
+  if(document.getElementById('bobot-final-tbody'))
+    document.getElementById('bobot-final-tbody').innerHTML=`
+      <tr><td><strong>Seminar</strong></td><td>Nilai Seminar</td><td><span class="badge badge-b">${bSm}%</span></td></tr>
+      <tr><td><strong>Sidang</strong></td><td>Nilai Sidang</td><td><span class="badge badge-b">${bSd}%</span></td></tr>
+      <tr><td><strong>Proses</strong></td><td>Nilai Proses (Pembimbing)</td><td><span class="badge badge-b">${bPr}%</span></td></tr>`;
+  if(document.getElementById('bobot-final-formula'))
+    document.getElementById('bobot-final-formula').innerHTML=`Final = <strong>${bSm}%</strong> Seminar + <strong>${bSd}%</strong> Sidang + <strong>${bPr}%</strong> Proses<br><span style="color:#888;font-size:11px">(Komponen yang belum ada nilainya diabaikan, bobot dinormalisasi)</span>`;
+}
+function openFinalModal(){
+  const bf=DB.bobot.bobot_final||{seminar:0.30,sidang:0.30,proses:0.40};
+  document.getElementById('bf-seminar').value=Math.round(bf.seminar*100);
+  document.getElementById('bf-sidang').value=Math.round(bf.sidang*100);
+  document.getElementById('bf-proses').value=Math.round(bf.proses*100);
+  chkFinal();openModal('modal-final');
+}
+function chkFinal(){
+  const sm=parseInt(document.getElementById('bf-seminar').value)||0;
+  const sd=parseInt(document.getElementById('bf-sidang').value)||0;
+  const pr=parseInt(document.getElementById('bf-proses').value)||0;
+  const tot=sm+sd+pr;
+  document.getElementById('bf-warning').textContent=tot!==100?`⚠ Total = ${tot}% (harus 100%)`:'✅ Total = 100%';
+}
+function saveFinal(){
+  const sm=parseInt(document.getElementById('bf-seminar').value)||0;
+  const sd=parseInt(document.getElementById('bf-sidang').value)||0;
+  const pr=parseInt(document.getElementById('bf-proses').value)||0;
+  if(sm+sd+pr!==100){alert('Total bobot harus 100%.');return;}
+  DB.bobot.bobot_final={seminar:sm/100,sidang:sd/100,proses:pr/100};
+  saveDB();closeModal('modal-final');renderBobot();
+}
+function openFormulaModal(tipe){
+  const f=(DB.bobot.formula||{})[tipe]||{pembimbing:0.60,penguji:0.40};
+  document.getElementById('formula-edit-tipe').value=tipe;
+  document.getElementById('modal-formula-title').textContent='Edit Formula '+tipe.charAt(0).toUpperCase()+tipe.slice(1);
+  document.getElementById('formula-pembimbing-inp').value=Math.round(f.pembimbing*100);
+  document.getElementById('formula-penguji-inp').value=Math.round(f.penguji*100);
+  chkFormula();
+  openModal('modal-formula');
+}
+function chkFormula(){
+  const p=parseInt(document.getElementById('formula-pembimbing-inp').value)||0;
+  const q=parseInt(document.getElementById('formula-penguji-inp').value)||0;
+  const tot=p+q;
+  document.getElementById('formula-warning').textContent=tot!==100?`⚠ Total = ${tot}% (harus 100%)`:'✅ Total = 100%';
+  // auto-fill penguji
+  document.getElementById('formula-penguji-inp').value=100-p;
+}
+function saveFormula(){
+  const tipe=document.getElementById('formula-edit-tipe').value;
+  const p=parseInt(document.getElementById('formula-pembimbing-inp').value)||0;
+  const q=100-p;
+  if(p+q!==100||p<0||p>100){alert('Total bobot pembimbing + penguji harus 100%.');return;}
+  if(!DB.bobot.formula)DB.bobot.formula={};
+  DB.bobot.formula[tipe]={pembimbing:p/100,penguji:q/100};
+  saveDB();closeModal('modal-formula');renderBobot();
+}
+function openBobotModal(t){document.getElementById('bobot-edit-type').value=t;document.getElementById('modal-bobot-title').textContent='Edit Bobot '+t.charAt(0).toUpperCase()+t.slice(1);const b=DB.bobot[t],lb=t==='proses'?PL:SSL;document.getElementById('bobot-form-body').innerHTML=Object.entries(b).map(([k,v])=>`<div class="form-group"><label>${k} — ${lb[k]||''}</label><input type="number" id="bi-${k}" min="0" max="100" step="1" value="${Math.round(v*100)}" oninput="chkBobot('${t}')"></div>`).join('');document.getElementById('bobot-warning').textContent='';openModal('modal-bobot');}
+function chkBobot(t){const tot=Object.keys(DB.bobot[t]).reduce((s,k)=>{const e=document.getElementById('bi-'+k);return s+(e?parseInt(e.value)||0:0);},0);document.getElementById('bobot-warning').textContent=tot!==100?`⚠ Total = ${tot}% (harus 100%)`:'✅ Total = 100%';}
+function saveBobot(){const t=document.getElementById('bobot-edit-type').value,b=DB.bobot[t];let tot=0,nb={};Object.keys(b).forEach(k=>{const v=parseInt(document.getElementById('bi-'+k).value)||0;nb[k]=v/100;tot+=v;});if(tot!==100){alert('Total bobot harus 100%.');return;}DB.bobot[t]=nb;saveDB();closeModal('modal-bobot');renderBobot();}
+function openGradeModal(){document.getElementById('grade-form-body').innerHTML=[...DB.grade].sort((a,b)=>b.min-a.min).map(g=>`<div class="form-group"><label>Grade ${g.grade} — nilai minimal</label><input type="number" id="gi-${g.grade}" min="0" max="100" value="${g.min}"></div>`).join('');openModal('modal-grade');}
+function saveGrade(){DB.grade=DB.grade.map(g=>({grade:g.grade,min:parseInt(document.getElementById('gi-'+g.grade).value)||0}));saveDB();closeModal('modal-grade');renderBobot();}
+
+let jadwalTab='seminar';
+function switchJadwal(t,el){jadwalTab=t;document.querySelectorAll('#jadwal-pills .tab-pill').forEach(x=>x.classList.remove('active'));el.classList.add('active');document.getElementById('jadwal-card-title').textContent='Jadwal '+t.charAt(0).toUpperCase()+t.slice(1);renderJadwal();}
+function renderJadwal(){
+  const q=(document.getElementById('jadwal-q').value||'').toLowerCase(),sf=document.getElementById('jadwal-sf').value;
+  const data=jadwalTab==='seminar'?DB.jadwal_seminar:DB.jadwal_sidang;
+  let html='',no=1;
+  DB.master.forEach(m=>{
+    const j=data[m.id]||{tgl:'',jam:'',ruangan:'',status:'-',catatan:''},nl=m.mhs.map(x=>x.nama).join(' & ');
+    if(q&&![nl,m.ps1,m.ps2||'',m.penguji,j.ruangan||''].some(s=>s.toLowerCase().includes(q)))return;
+    if(sf&&j.status!==sf)return;
+    const sc=j.status==='Done'?'badge-done':j.status==='Fix'?'badge-fix':'badge-none';
+    html+=`<tr><td style="color:#888;font-size:12px">${no++}</td><td style="font-size:12px">${j.tgl?fmtDate(j.tgl):'-'}</td><td style="font-size:12px">${j.jam||'-'}</td><td><span class="tag">${m.id}</span> ${nl}</td><td><span class="tag">${m.ps1}</span></td><td>${m.ps2?`<span class="tag">${m.ps2}</span>`:'-'}</td><td><span class="tag">${m.penguji}</span></td><td style="font-size:11px;color:#555">${j.ruangan||'-'}</td><td><span class="badge ${sc}">${j.status||'-'}</span></td><td style="font-size:11px;color:#888;max-width:110px;white-space:normal">${j.catatan||'-'}</td><td><button class="btn btn-sm btn-icon" onclick="openJadwalModal('${m.id}')" title="Edit">✏️</button></td></tr>`;
+  });
+  document.getElementById('jadwal-tbody').innerHTML=html||'<tr><td colspan="11" style="text-align:center;color:#888;padding:20px">Tidak ada data</td></tr>';
+}
+function openJadwalModal(id){
+  const m=DB.master.find(x=>x.id===id),data=jadwalTab==='seminar'?DB.jadwal_seminar:DB.jadwal_sidang,j=data[id]||{};
+  document.getElementById('jadwal-edit-id').value=id;document.getElementById('jadwal-edit-tab').value=jadwalTab;
+  document.getElementById('modal-jadwal-title').textContent=`Edit Jadwal ${jadwalTab.charAt(0).toUpperCase()+jadwalTab.slice(1)} — ${m.id}`;
+  document.getElementById('jadwal-edit-mhs').textContent=m.mhs.map(x=>x.nama).join(' & ');
+  document.getElementById('jadwal-tgl-inp').value=j.tgl||'';document.getElementById('jadwal-jam-inp').value=j.jam||'';
+  document.getElementById('jadwal-ruangan-inp').value=j.ruangan||'';document.getElementById('jadwal-status-inp').value=j.status||'-';
+  document.getElementById('jadwal-catatan-inp').value=j.catatan||'';openModal('modal-jadwal');
+}
+function saveJadwal(){
+  const id=document.getElementById('jadwal-edit-id').value,tab=document.getElementById('jadwal-edit-tab').value;
+  const data=tab==='seminar'?DB.jadwal_seminar:DB.jadwal_sidang;
+  data[id]={tgl:document.getElementById('jadwal-tgl-inp').value,jam:document.getElementById('jadwal-jam-inp').value.trim(),ruangan:document.getElementById('jadwal-ruangan-inp').value.trim(),status:document.getElementById('jadwal-status-inp').value,catatan:document.getElementById('jadwal-catatan-inp').value.trim()};
+  saveDB();closeModal('modal-jadwal');renderJadwal();
+}
+
+let inpSelId=null;
+function renderInputList(){
+  const sesi=document.getElementById('inp-sesi').value,q=(document.getElementById('inp-q').value||'').toLowerCase();
+  let html='';
+  DB.master.forEach(m=>{
+    const nl=m.mhs.map(x=>x.nama).join(' & '),niml=m.mhs.map(x=>x.nim).join(' & ');
+    if(q&&!nl.toLowerCase().includes(q)&&!niml.includes(q))return;
+    const n=DB.nilai[m.id]||{};
+    const arr=sesi==='seminar'?n.seminar:sesi==='sidang'?n.sidang:n.proses;
+    const has=arr&&arr.length>0;
+    const jB=m.jenis==='Individu'?'badge-ind':'badge-kel';
+    // Tampilkan badge nilai per mahasiswa
+    let scoreHtml='';
+    if(has){
+      m.mhs.forEach((mh,mi)=>{
+        const v=sesi==='seminar'?calcSS(arr,DB.bobot.seminar,'seminar',mi):
+                 sesi==='sidang' ?calcSS(arr,DB.bobot.sidang,'sidang',mi) :
+                                  calcP(arr,mi);
+        if(v!==null) scoreHtml+=`<span style="font-size:11px;color:#888">${mh.nama.split(' ')[0]}:</span> <span class="badge badge-b" style="margin-right:6px">${v.toFixed(2)}</span>`;
+      });
+    }
+    const mhsDetail=m.mhs.map(mh=>`<div style="font-size:13px;font-weight:600">${mh.nama} <span style="font-size:11px;color:#888;font-weight:400">${mh.nim}</span></div>`).join('');
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f0eee8;">
+      <div>
+        <span class="tag">${m.id}</span><span class="badge ${jB}" style="font-size:10px"> ${m.jenis}</span>
+        <div style="margin-top:4px">${mhsDetail}</div>
+        ${scoreHtml?`<div style="margin-top:4px">${scoreHtml}</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="openInputForm('${m.id}')">${has?'✏️ Edit':'+ Input'} nilai</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('inp-list').innerHTML=html||'<div style="color:#888;padding:16px 0;font-size:13px">Tidak ada hasil</div>';
+}
+
+function openInputForm(id){
+  inpSelId=id;
+  const m=DB.master.find(x=>x.id===id),sesi=document.getElementById('inp-sesi').value;
+  document.getElementById('inp-form-title').textContent=`Input Nilai ${sesi.toUpperCase()} — ${m.id}`;
+  const s=DB.nilai[id]||{};
+  const existing=sesi==='seminar'?s.seminar:sesi==='sidang'?s.sidang:s.proses||[];
+  // Daftar peran dosen
+  let perans=[];
+  if(sesi==='proses'){
+    perans.push({key:'ps1',label:'Pembimbing 1',kode:m.ps1});
+    if(m.ps2) perans.push({key:'ps2',label:'Pembimbing 2',kode:m.ps2});
+  } else {
+    perans.push({key:'ps1',label:'PS 1',kode:m.ps1});
+    if(m.ps2) perans.push({key:'ps2',label:'PS 2',kode:m.ps2});
+    perans.push({key:'penguji',label:'Penguji',kode:m.penguji});
+  }
+  const bobot=sesi==='sidang'?DB.bobot.sidang:DB.bobot.seminar;
+  const isProses=sesi==='proses';
+  const keys=isProses?['B1','B2','B3']:['A1','A2','A3','A4','A5'];
+  const kLabel=isProses?
+    {B1:`B1 (${Math.round(DB.bobot.proses.B1*100)}%)`,B2:`B2 (${Math.round(DB.bobot.proses.B2*100)}%)`,B3:`B3 (${Math.round(DB.bobot.proses.B3*100)}%)`}:
+    {A1:`A1 (${Math.round(bobot.A1*100)}%)`,A2:`A2 (${Math.round(bobot.A2*100)}%)`,A3:`A3 (${Math.round(bobot.A3*100)}%)`,A4:`A4 (${Math.round(bobot.A4*100)}%)`,A5:`A5 (${Math.round(bobot.A5*100)}%)`};
+  const hint=isProses?'B1=Aktivitas · B2=Kemandirian · B3=Usaha':'A1=Latar belakang · A2=Metode · A3=Tata bahasa · A4=Presentasi · A5=Menjawab';
+  const gridClass=isProses?'score-grid3':'score-grid5';
+
+  let fH='';
+  // Loop per mahasiswa
+  m.mhs.forEach((mh,mi)=>{
+    fH+=`<div style="background:#F0EFFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;color:#5a3d9e;margin-bottom:10px;">👤 ${mh.nama} <span style="font-size:11px;font-weight:400;color:#888">${mh.nim}</span></div>`;
+    perans.forEach(pr=>{
+      const ex=(existing||[]).find(x=>x.peran===pr.key&&x.mhsIdx===mi)||{};
+      const dosenNama=(DB.dosen[pr.kode]||pr.kode).split(',')[0];
+      fH+=`<div class="peran-block" style="margin-bottom:8px;">
+        <div class="peran-block-title">${pr.label} — ${pr.kode} <span style="font-weight:400;color:#666">${dosenNama}</span></div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">${hint}</div>
+        <div class="${gridClass}">`;
+      keys.forEach(k=>{
+        fH+=`<div class="score-item"><label>${kLabel[k]}</label><input type="number" min="0" max="100" id="inp_${mi}_${pr.key}_${k}" value="${ex[k]!==undefined?ex[k]:''}"></div>`;
+      });
+      fH+=`</div></div>`;
+    });
+    fH+=`</div>`;
+  });
+
+  document.getElementById('inp-form-body').innerHTML=fH;
+  document.getElementById('inp-form-card').style.display='block';
+  document.getElementById('inp-alert').style.display='none';
+  document.getElementById('inp-form-card').scrollIntoView({behavior:'smooth'});
+}
+
+function saveNilai(){
+  const id=inpSelId,m=DB.master.find(x=>x.id===id),sesi=document.getElementById('inp-sesi').value;
+  if(!DB.nilai[id])DB.nilai[id]={};
+  let peranKeys=['ps1'];
+  if(m.ps2&&sesi==='proses') peranKeys.push('ps2');
+  if(m.ps2&&sesi!=='proses') peranKeys.splice(1,0,'ps2');
+  if(sesi!=='proses') peranKeys.push('penguji');
+  const keys=sesi==='proses'?['B1','B2','B3']:['A1','A2','A3','A4','A5'];
+  let rows=[];
+  m.mhs.forEach((mh,mi)=>{
+    peranKeys.forEach(pr=>{
+      let row={mhsIdx:mi,peran:pr},has=false;
+      keys.forEach(k=>{
+        const el=document.getElementById(`inp_${mi}_${pr}_${k}`);
+        if(el&&el.value!==''){row[k]=parseFloat(el.value);has=true;}
+      });
+      if(has) rows.push(row);
+    });
+  });
+  DB.nilai[id][sesi]=rows;
+  saveDB();
+  const al=document.getElementById('inp-alert');
+  al.className='alert alert-success';
+  al.textContent='✅ Nilai berhasil disimpan!';
+  al.style.display='block';
+  renderInputList();
+}
+
+function renderRekap(){
+  const q=(document.getElementById('rekap-q').value||'').toLowerCase(),fil=document.getElementById('rekap-filter').value,jf=document.getElementById('rekap-jenis').value;
+  let html='',no=1;
+  DB.master.forEach(m=>{
+    if(jf&&m.jenis!==jf)return;
+    const jB=m.jenis==='Individu'?'badge-ind':'badge-kel';
+    m.mhs.forEach((mh,mi)=>{
+      if(q&&!mh.nama.toLowerCase().includes(q)&&!mh.nim.includes(q))return;
+      const f=getFinal(m.id,mi);
+      if(fil==='sidang'&&f.sidang===null)return;
+      if(fil==='seminar'&&(f.seminar===null||f.sidang!==null))return;
+      if(fil==='belum'&&f.final!==null)return;
+      const g=getGrade(f.final);
+      const sm=f.seminar!==null?f.seminar.toFixed(2):'-';
+      const sd=f.sidang!==null?f.sidang.toFixed(2):'-';
+      const pr=f.proses!==null?f.proses.toFixed(2):'-';
+      const fn=f.final!==null?f.final.toFixed(2):'-';
+      html+=`<tr>
+        <td style="color:#888">${no++}</td>
+        <td style="white-space:nowrap"><span class="tag">${m.id}</span><span class="badge ${jB}" style="font-size:10px">${m.jenis}</span></td>
+        <td style="font-weight:500">${mh.nama}</td>
+        <td style="font-size:11px;color:#888">${mh.nim}</td>
+        <td>${sm}</td>
+        <td>${sd}</td>
+        <td>${pr}</td>
+        <td><strong>${fn}</strong></td>
+        <td>${gBadge(g)}</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('rekap-tbody').innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:#888;padding:20px">Tidak ada data</td></tr>';
+}
+
+function exportXLSX(){
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Rekap Nilai ──────────────────────────────
+  const bf = DB.bobot.bobot_final||{seminar:0.30,sidang:0.30,proses:0.40};
+  const fs = DB.bobot.formula||{seminar:{pembimbing:0.60,penguji:0.40},sidang:{pembimbing:0.60,penguji:0.40}};
+  const rekapRows = [
+    ['No','ID','Nama Mahasiswa','NIM','Jenis','PS1','PS2','Penguji',
+     'Nilai Seminar','Nilai Sidang','Nilai Proses','Final Score','Grade']
+  ];
+  let no=1;
+  DB.master.forEach(m=>{
+    m.mhs.forEach((mh,mi)=>{
+      const f=getFinal(m.id,mi), g=getGrade(f.final);
+      rekapRows.push([
+        no++, m.id, mh.nama, mh.nim, m.jenis,
+        m.ps1, m.ps2||'-', m.penguji,
+        f.seminar!==null?parseFloat(f.seminar.toFixed(2)):'-',
+        f.sidang!==null ?parseFloat(f.sidang.toFixed(2)) :'-',
+        f.proses!==null ?parseFloat(f.proses.toFixed(2)) :'-',
+        f.final!==null  ?parseFloat(f.final.toFixed(2))  :'-',
+        g||'-'
+      ]);
+    });
+  });
+  const wsRekap = XLSX.utils.aoa_to_sheet(rekapRows);
+  // lebar kolom
+  wsRekap['!cols'] = [
+    {wch:4},{wch:7},{wch:32},{wch:16},{wch:10},
+    {wch:6},{wch:6},{wch:6},
+    {wch:14},{wch:12},{wch:12},{wch:12},{wch:7}
+  ];
+  XLSX.utils.book_append_sheet(wb, wsRekap, 'Rekap Nilai');
+
+
+  // ── Sheet 2: Detail Seminar ───────────────────────────
+  const seminarRows = [
+    ['ID','Nama','NIM','Peran','Dosen','A1','A2','A3','A4','A5','Nilai Komponen','Nilai Seminar']
+  ];
+  DB.master.forEach(m=>{
+    const rows=(DB.nilai[m.id]||{}).seminar||[];
+    const nilaiSm=calcSS(rows,DB.bobot.seminar,'seminar');
+    const bobot=DB.bobot.seminar;
+    // baris per mahasiswa, kolom dosen diulang
+    m.mhs.forEach((mh,mi)=>{
+      const rowsMi=rows.filter(r=>r.mhsIdx===mi||r.mhsIdx===undefined);
+      const nilaiSmMi=calcSS(rows,DB.bobot.seminar,'seminar',mi);
+      if(!rowsMi.length){
+        seminarRows.push([m.id,mh.nama,mh.nim,'—','—','—','—','—','—','—','—','—']);
+        return;
+      }
+      rowsMi.forEach((r,ri)=>{
+        const peranLabel=r.peran==='ps1'?'PS1 (Pembimbing 1)':r.peran==='ps2'?'PS2 (Pembimbing 2)':'Penguji';
+        const dosenKode=r.peran==='ps1'?m.ps1:r.peran==='ps2'?(m.ps2||'-'):m.penguji;
+        const dosenNama=DB.dosen[dosenKode]||dosenKode;
+        const komponen=bobot.A1*(r.A1||0)+bobot.A2*(r.A2||0)+bobot.A3*(r.A3||0)+bobot.A4*(r.A4||0)+bobot.A5*(r.A5||0);
+        seminarRows.push([
+          m.id, mh.nama, mh.nim, peranLabel, dosenNama,
+          r.A1||'-',r.A2||'-',r.A3||'-',r.A4||'-',r.A5||'-',
+          parseFloat(komponen.toFixed(2)),
+          ri===0?(nilaiSmMi!==null?parseFloat(nilaiSmMi.toFixed(2)):'-'):''
+        ]);
+      });
+    });
+  });
+  const wsSeminar = XLSX.utils.aoa_to_sheet(seminarRows);
+  wsSeminar['!cols']=[{wch:7},{wch:28},{wch:15},{wch:18},{wch:30},{wch:5},{wch:5},{wch:5},{wch:5},{wch:5},{wch:14},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, wsSeminar, 'Detail Seminar');
+
+  // ── Sheet 3: Detail Sidang ────────────────────────────
+  const sidangRows = [
+    ['ID','Nama','NIM','Peran','Dosen','A1','A2','A3','A4','A5','Nilai Komponen','Nilai Sidang']
+  ];
+  DB.master.forEach(m=>{
+    const rows=(DB.nilai[m.id]||{}).sidang||[];
+    const bobot=DB.bobot.sidang;
+    m.mhs.forEach((mh,mi)=>{
+      const rowsMi=rows.filter(r=>r.mhsIdx===mi||r.mhsIdx===undefined);
+      const nilaiSdMi=calcSS(rows,DB.bobot.sidang,'sidang',mi);
+      if(!rowsMi.length){
+        sidangRows.push([m.id,mh.nama,mh.nim,'—','—','—','—','—','—','—','—','—']);
+        return;
+      }
+      rowsMi.forEach((r,ri)=>{
+        const peranLabel=r.peran==='ps1'?'PS1 (Pembimbing 1)':r.peran==='ps2'?'PS2 (Pembimbing 2)':'Penguji';
+        const dosenKode=r.peran==='ps1'?m.ps1:r.peran==='ps2'?(m.ps2||'-'):m.penguji;
+        const dosenNama=DB.dosen[dosenKode]||dosenKode;
+        const komponen=bobot.A1*(r.A1||0)+bobot.A2*(r.A2||0)+bobot.A3*(r.A3||0)+bobot.A4*(r.A4||0)+bobot.A5*(r.A5||0);
+        sidangRows.push([
+          m.id, mh.nama, mh.nim, peranLabel, dosenNama,
+          r.A1||'-',r.A2||'-',r.A3||'-',r.A4||'-',r.A5||'-',
+          parseFloat(komponen.toFixed(2)),
+          ri===0?(nilaiSdMi!==null?parseFloat(nilaiSdMi.toFixed(2)):'-'):''
+        ]);
+      });
+    });
+  });
+  const wsSidang = XLSX.utils.aoa_to_sheet(sidangRows);
+  wsSidang['!cols']=[{wch:7},{wch:28},{wch:15},{wch:18},{wch:30},{wch:5},{wch:5},{wch:5},{wch:5},{wch:5},{wch:14},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsSidang, 'Detail Sidang');
+
+  // ── Sheet 4: Detail Proses ────────────────────────────
+  const prosesRows = [
+    ['ID','Nama','NIM','Peran','Dosen','B1','B2','B3','Nilai Komponen','Nilai Proses']
+  ];
+  DB.master.forEach(m=>{
+    const rows=(DB.nilai[m.id]||{}).proses||[];
+    m.mhs.forEach((mh,mi)=>{
+      const rowsMi=rows.filter(r=>r.mhsIdx===mi||r.mhsIdx===undefined);
+      const nilaiPrMi=calcP(rows,mi);
+      if(!rowsMi.length){
+        prosesRows.push([m.id,mh.nama,mh.nim,'—','—','—','—','—','—','—']);
+        return;
+      }
+      rowsMi.forEach((r,ri)=>{
+        const peranLabel=r.peran==='ps1'?'PS1 (Pembimbing 1)':'PS2 (Pembimbing 2)';
+        const dosenKode=r.peran==='ps1'?m.ps1:(m.ps2||'-');
+        const dosenNama=DB.dosen[dosenKode]||dosenKode;
+        const komponen=DB.bobot.proses.B1*(r.B1||0)+DB.bobot.proses.B2*(r.B2||0)+DB.bobot.proses.B3*(r.B3||0);
+        prosesRows.push([
+          m.id, mh.nama, mh.nim, peranLabel, dosenNama,
+          r.B1||'-',r.B2||'-',r.B3||'-',
+          parseFloat(komponen.toFixed(2)),
+          ri===0?(nilaiPrMi!==null?parseFloat(nilaiPrMi.toFixed(2)):'-'):''
+        ]);
+      });
+    });
+  });
+  const wsProses = XLSX.utils.aoa_to_sheet(prosesRows);
+  wsProses['!cols']=[{wch:7},{wch:28},{wch:15},{wch:18},{wch:30},{wch:5},{wch:5},{wch:5},{wch:14},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsProses, 'Detail Proses');
+
+  // ── Sheet 5: Jadwal ───────────────────────────────────
+  const jadwalRows = [
+    ['ID','Nama','NIM','Jenis','PS1','PS2','Penguji',
+     'Tgl Seminar','Jam','Ruangan Seminar','Status Seminar','Catatan Seminar',
+     'Tgl Sidang','Jam','Ruangan Sidang','Status Sidang','Catatan Sidang']
+  ];
+  DB.master.forEach(m=>{
+    const js=DB.jadwal_seminar[m.id]||{};
+    const jd=DB.jadwal_sidang[m.id]||{};
+    m.mhs.forEach(mh=>{
+      jadwalRows.push([
+        m.id, mh.nama, mh.nim, m.jenis, m.ps1, m.ps2||'-', m.penguji,
+        js.tgl||'-',js.jam||'-',js.ruangan||'-',js.status||'-',js.catatan||'-',
+        jd.tgl||'-',jd.jam||'-',jd.ruangan||'-',jd.status||'-',jd.catatan||'-'
+      ]);
+    });
+  });
+  const wsJadwal = XLSX.utils.aoa_to_sheet(jadwalRows);
+  wsJadwal['!cols']=[{wch:7},{wch:28},{wch:15},{wch:10},{wch:6},{wch:6},{wch:6},{wch:13},{wch:7},{wch:22},{wch:8},{wch:18},{wch:13},{wch:7},{wch:22},{wch:8},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsJadwal, 'Jadwal');
+
+  // ── Download ──────────────────────────────────────────
+  XLSX.writeFile(wb, 'Nilai_TA_2022.xlsx');
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD: KEHADIRAN & BIMBINGAN
+// ══════════════════════════════════════════
+async function renderDashboardKehadiran(){
+  const sb=getSB();
+  const elDiv=document.getElementById('dash-kehadiran');
+  const syarat=parseInt(document.getElementById('syarat-hadir')?.value)||5;
+  if(!elDiv) return;
+  const allMhs=DB.master.flatMap(m=>m.mhs.map(mh=>({nim:mh.nim,nama:mh.nama})));
+  if(!sb){ elDiv.innerHTML='<div style="color:#888;font-size:12px;padding:8px 0;">Hubungkan Supabase untuk melihat data kehadiran.</div>'; return; }
+  elDiv.innerHTML='<div style="color:#888;font-size:12px;">Memuat...</div>';
+  const {data:hadirData}=await sb.from('bukti_hadir').select('user_id,sesi_seminar_id,users(nim_or_inisial)');
+  const countMap={};
+  (hadirData||[]).forEach(h=>{ const nim=h.users?.nim_or_inisial; if(nim) countMap[nim]=(countMap[nim]||0)+1; });
+  const rows=allMhs.map(m=>({...m,count:countMap[m.nim]||0,ok:(countMap[m.nim]||0)>=syarat})).sort((a,b)=>a.count-b.count);
+  const kurang=rows.filter(r=>!r.ok).length, cukup=rows.filter(r=>r.ok).length;
+  elDiv.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;">
+    <div style="flex:1;background:#d4f0d7;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#1a6b25;">${cukup}</div><div style="font-size:11px;color:#1a6b25;">Sudah cukup (≥${syarat})</div></div>
+    <div style="flex:1;background:#fde0e0;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#8a1a1a;">${kurang}</div><div style="font-size:11px;color:#8a1a1a;">Belum cukup</div></div>
+  </div><div style="max-height:180px;overflow-y:auto;">
+  ${rows.filter(r=>!r.ok).map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0eee8;font-size:12px;"><span>${r.nama}</span><span style="color:#c0392b;font-weight:600;">${r.count}/${syarat}</span></div>`).join('')}
+  ${kurang===0?'<div style="color:#1a6b25;font-size:12px;padding:8px 0;">✅ Semua mahasiswa memenuhi syarat!</div>':''}</div>`;
+}
+
+async function renderDashboardBimbingan(){
+  const sb=getSB();
+  const elDiv=document.getElementById('dash-bimbingan');
+  const syarat=parseInt(document.getElementById('syarat-bimbingan')?.value)||8;
+  if(!elDiv) return;
+  const allMhs=DB.master.flatMap(m=>m.mhs.map(mh=>({nim:mh.nim,nama:mh.nama})));
+  if(!sb){ elDiv.innerHTML='<div style="color:#888;font-size:12px;padding:8px 0;">Hubungkan Supabase untuk melihat data bimbingan.</div>'; return; }
+  elDiv.innerHTML='<div style="color:#888;font-size:12px;">Memuat...</div>';
+  const {data:kbData}=await sb.from('kartu_bimbingan').select('user_id,users(nim_or_inisial)');
+  const countMap={};
+  (kbData||[]).forEach(k=>{ const nim=k.users?.nim_or_inisial; if(nim) countMap[nim]=(countMap[nim]||0)+1; });
+  const rows=allMhs.map(m=>({...m,count:countMap[m.nim]||0,ok:(countMap[m.nim]||0)>=syarat})).sort((a,b)=>a.count-b.count);
+  const kurang=rows.filter(r=>!r.ok).length, cukup=rows.filter(r=>r.ok).length;
+  elDiv.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;">
+    <div style="flex:1;background:#d4f0d7;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#1a6b25;">${cukup}</div><div style="font-size:11px;color:#1a6b25;">Sudah cukup (≥${syarat})</div></div>
+    <div style="flex:1;background:#fde0e0;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#8a1a1a;">${kurang}</div><div style="font-size:11px;color:#8a1a1a;">Belum cukup</div></div>
+  </div><div style="max-height:180px;overflow-y:auto;">
+  ${rows.filter(r=>!r.ok).map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0eee8;font-size:12px;"><span>${r.nama}</span><span style="color:#c0392b;font-weight:600;">${r.count}/${syarat}</span></div>`).join('')}
+  ${kurang===0?'<div style="color:#1a6b25;font-size:12px;padding:8px 0;">✅ Semua mahasiswa memenuhi syarat!</div>':''}</div>`;
+}
+
+// ══════════════════════════════════════════
+//  TOGGLE PASSWORD VISIBILITY
+// ══════════════════════════════════════════
+const _pwVisible={};
+function togglePw(uid,encodedHash){
+  const el=document.getElementById('pw-'+uid); if(!el) return;
+  if(_pwVisible[uid]){ el.textContent='••••••'; _pwVisible[uid]=false; }
+  else { try{ el.textContent=atob(atob(encodedHash)); }catch(e){ try{ el.textContent=atob(encodedHash); }catch(e2){ el.textContent='(terenkripsi)'; } } _pwVisible[uid]=true; }
+}
+
+// ══════════════════════════════════════════
+//  TEMPLATE BERKAS (ADMIN)
+// ══════════════════════════════════════════
+async function uploadTemplate(){
+  const sb=getSB();
+  if(!sb){ alert('Supabase belum terhubung. Isi SB_URL dan SB_KEY.'); return; }
+  const nama=document.getElementById('tmpl-nama')?.value.trim();
+  const jenis=document.getElementById('tmpl-jenis')?.value;
+  const file=document.getElementById('tmpl-file')?.files[0];
+  if(!nama||!file){ showTmplAlert('Nama dan file wajib diisi.','danger'); return; }
+  showTmplAlert('Mengupload...','info');
+  const path=`templates/${jenis}/${Date.now()}_${file.name}`;
+  const {error}=await sb.storage.from('berkas-ta').upload(path,file,{upsert:true});
+  if(error){ showTmplAlert('Gagal upload: '+error.message,'danger'); return; }
+  await sb.from('template_berkas').insert({nama,jenis,storage_path:path});
+  showTmplAlert('✅ Template berhasil diupload!','success');
+  ['tmpl-nama','tmpl-file'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const dt=document.getElementById('tmpl-drop-text'); if(dt) dt.textContent='Klik untuk memilih file (PDF/DOCX/XLSX)';
+  loadTemplateList();
+}
+
+async function loadTemplateList(){
+  const sb=getSB();
+  const el=document.getElementById('tmpl-list'); if(!el) return;
+  if(!sb){ el.innerHTML='<div style="color:#888;font-size:13px;">Supabase belum terhubung.</div>'; return; }
+  el.innerHTML='<div style="color:#888;font-size:13px;text-align:center;padding:16px;">Memuat...</div>';
+  const {data,error}=await sb.from('template_berkas').select('*').order('uploaded_at',{ascending:false});
+  if(error||!data||!data.length){ el.innerHTML='<div style="color:#888;font-size:13px;padding:8px 0;">Belum ada template.</div>'; return; }
+  el.innerHTML=data.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0eee8;">
+      <span style="font-size:20px;">📋</span>
+      <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${t.nama}</div><div style="font-size:11px;color:#888;margin-top:2px;"><span class="tag">${t.jenis}</span> · ${new Date(t.uploaded_at).toLocaleDateString('id-ID')}</div></div>
+      <button class="btn btn-sm" onclick="downloadTmpl('${t.storage_path}','${t.nama}')">⬇</button>
+      <button class="btn btn-sm btn-danger" onclick="hapusTmpl('${t.id}')">Hapus</button>
+    </div>`).join('');
+}
+
+async function downloadTmpl(path,nama){
+  const sb=getSB(); if(!sb) return;
+  const {data}=await sb.storage.from('berkas-ta').createSignedUrl(path,60);
+  if(data?.signedUrl){ const a=document.createElement('a');a.href=data.signedUrl;a.download=nama;a.click(); }
+}
+
+async function hapusTmpl(id){
+  if(!confirm('Hapus template ini?')) return;
+  const sb=getSB(); if(!sb) return;
+  await sb.from('template_berkas').delete().eq('id',id);
+  loadTemplateList();
+}
+
+function showTmplAlert(msg,type){
+  const el=document.getElementById('tmpl-alert'); if(!el) return;
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none',4000);
+}
+
+// ensure 2022 in list
+const _aList=getAngkatanList();
+if(!_aList.includes('2022')){_aList.unshift('2022');saveAngkatanList(_aList);}
+initDB('2022');
+renderDashboard();
+</script>
+<!-- Modal: Tambah/Edit Akun User -->
+<div class="modal-overlay hidden" id="modal-user">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-user')">×</button>
+    <div class="modal-title" id="modal-user-title">Tambah Akun</div>
+    <input type="hidden" id="user-edit-id">
+    <input type="hidden" id="user-edit-role">
+
+    <div class="form-group">
+      <label id="user-id-label">NIM</label>
+      <input type="text" id="user-nim-inp" placeholder="cth: 23102210001">
+    </div>
+    <div class="form-group">
+      <label>Nama Lengkap</label>
+      <input type="text" id="user-nama-inp" placeholder="Nama lengkap...">
+    </div>
+    <div class="form-group" id="user-angkatan-group">
+      <label>Angkatan</label>
+      <input type="text" id="user-angkatan-inp" placeholder="cth: 2022" maxlength="4">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="text" id="user-pass-inp" placeholder="Kosongkan = tidak diubah">
+      <div style="font-size:11px;color:#888;margin-top:4px;">Default: "nim" + NIM/inisial (cth: nim23102210001)</div>
+    </div>
+    <div id="modal-user-alert" style="display:none;margin-top:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-user')">Batal</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Hapus User -->
+<div class="modal-overlay hidden" id="modal-del-user">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-del-user')">×</button>
+    <div class="modal-title">Hapus Akun?</div>
+    <div style="font-size:13px;color:#555;" id="del-user-name"></div>
+    <div class="alert alert-danger" style="margin-top:10px;">Akun yang dihapus tidak bisa dikembalikan. Data nilai tidak ikut terhapus.</div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-del-user')">Batal</button>
+      <button class="btn btn-danger" onclick="confirmDelUser()">🗑 Hapus Akun</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  SUPABASE CONFIG — isi setelah setup
+// ══════════════════════════════════════════
+const SB_URL  = 'https://jfigezwgpjdcstfhawmq.supabase.co';  // cth: 'https://xxxxxx.supabase.co'
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaWdlendncGpkY3N0Zmhhd21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjA3MzMsImV4cCI6MjA5ODEzNjczM30.ne8vbzqzXScutIkcqgpAJrSMbNjZN0DXmbxVVCaylzk';  // cth: 'eyJhbGci...'
+
+let sbClient = null;
+function getSB(){
+  if(!sbClient && SB_URL && SB_KEY){
+    sbClient = window.supabase ? supabase.createClient(SB_URL, SB_KEY) : null;
+  }
+  return sbClient;
+}
+
+// Cek koneksi saat halaman users dibuka
+function initUsersPage(){
+  const sb = getSB();
+  const warn = document.getElementById('users-supabase-warn');
+  if(!SB_URL || !SB_KEY){
+    if(warn) warn.style.display='block';
+  } else {
+    if(warn) warn.style.display='none';
+    loadUsers('mahasiswa');
+    loadUsers('dosen');
+  }
+}
+
+// ── LOAD USERS ────────────────────────────
+let usersMhs  = [];
+let usersDosen = [];
+let delUserId = null;
+
+async function loadUsers(role){
+  const sb = getSB();
+  if(!sb){ showUserAlert(role,'Supabase belum terhubung. Isi SB_URL dan SB_KEY.','warn'); return; }
+
+  const tbody = document.getElementById('user-'+role.replace('mahasiswa','mhs')+'-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:#888">Memuat...</td></tr>';
+
+  const {data, error} = await sb.from('users').select('*').eq('role', role).order('nama');
+  if(error){ showUserAlert(role,'Gagal memuat: '+error.message,'danger'); return; }
+
+  if(role==='mahasiswa') usersMhs = data||[];
+  else usersDosen = data||[];
+
+  renderUserTable(role);
+}
+
+function renderUserTable(role){
+  const isMhs = role==='mahasiswa';
+  const data  = isMhs ? usersMhs : usersDosen;
+  const q     = (document.getElementById(isMhs?'user-mhs-q':'user-mhs-q')?.value||'').toLowerCase();
+  const tbody = document.getElementById('user-'+(isMhs?'mhs':'dosen')+'-tbody');
+
+  const filtered = data.filter(u =>
+    !q || u.nama.toLowerCase().includes(q) || u.nim_or_inisial.toLowerCase().includes(q)
+  );
+
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="${isMhs?6:5}" style="text-align:center;color:#888;padding:20px">Belum ada akun. Klik "+ Tambah Akun" atau "Import".</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((u,i) => `
+    <tr>
+      <td style="color:#888;font-size:12px">${i+1}</td>
+      <td><span class="tag">${u.nim_or_inisial}</span></td>
+      <td style="font-weight:500">${u.nama}</td>
+      ${isMhs ? `<td style="color:#888;font-size:12px">${u.angkatan||'-'}</td>` : ''}
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="pw-${u.id}" style="font-size:11px;background:#f0eee8;padding:2px 8px;border-radius:6px;color:#888;font-family:monospace">••••••</span>
+          <button class="btn btn-sm btn-icon" style="opacity:0.5;font-size:11px;padding:2px 6px;" onclick="togglePw('${u.id}','${btoa(u.password_hash)}')" title="Lihat password">👁</button>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;gap:5px;opacity:0;transition:opacity 0.15s;" class="action-btns">
+          <button class="btn btn-sm btn-icon" onclick="openUserModal('${role}','${u.id}')" title="Edit">✏️</button>
+          <button class="btn btn-sm btn-icon btn-danger" onclick="openDelUser('${u.id}','${u.nama}')" title="Hapus">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ── MODAL TAMBAH / EDIT ───────────────────
+function openUserModal(role, id=null){
+  const isMhs = role==='mahasiswa';
+  const isEdit = !!id;
+  document.getElementById('modal-user-title').textContent = isEdit ? 'Edit Akun' : 'Tambah Akun '+( isMhs?'Mahasiswa':'Dosen');
+  document.getElementById('user-edit-role').value  = role;
+  document.getElementById('user-edit-id').value    = id||'';
+  document.getElementById('user-id-label').textContent = isMhs ? 'NIM' : 'Inisial (kode unik)';
+  document.getElementById('user-nim-inp').placeholder = isMhs ? 'cth: 23102210001' : 'cth: AYS';
+  document.getElementById('user-angkatan-group').style.display = isMhs ? 'block' : 'none';
+  document.getElementById('modal-user-alert').style.display = 'none';
+
+  if(isEdit){
+    const list = isMhs ? usersMhs : usersDosen;
+    const u = list.find(x=>x.id===id);
+    if(u){
+      document.getElementById('user-nim-inp').value      = u.nim_or_inisial;
+      document.getElementById('user-nama-inp').value     = u.nama;
+      document.getElementById('user-angkatan-inp').value = u.angkatan||'';
+      document.getElementById('user-nim-inp').disabled   = true;  // tidak bisa ubah NIM/inisial
+    }
+  } else {
+    document.getElementById('user-nim-inp').value      = '';
+    document.getElementById('user-nama-inp').value     = '';
+    document.getElementById('user-angkatan-inp').value = currentAngkatan||'2022';
+    document.getElementById('user-nim-inp').disabled   = false;
+  }
+  document.getElementById('user-pass-inp').value = '';
+  openModal('modal-user');
+}
+
+async function saveUser(){
+  const sb = getSB();
+  if(!sb){ alert('Supabase belum terhubung.'); return; }
+
+  const role    = document.getElementById('user-edit-role').value;
+  const editId  = document.getElementById('user-edit-id').value;
+  const nim     = document.getElementById('user-nim-inp').value.trim().toUpperCase();
+  const nama    = document.getElementById('user-nama-inp').value.trim();
+  const ang     = document.getElementById('user-angkatan-inp').value.trim();
+  const pass    = document.getElementById('user-pass-inp').value.trim();
+  const isMhs   = role==='mahasiswa';
+
+  if(!nim||!nama){ showModalAlert('NIM/inisial dan nama wajib diisi.','danger'); return; }
+
+  // Hash password: btoa (sama dengan portal mahasiswa/dosen)
+  const passHash = pass ? btoa(pass) : null;
+
+  let result;
+  if(editId){
+    // Edit
+    const upd = {nama};
+    if(isMhs) upd.angkatan = ang||null;
+    if(passHash) upd.password_hash = passHash;
+    result = await sb.from('users').update(upd).eq('id',editId);
+  } else {
+    // Tambah baru
+    if(!pass && !isMhs){ showModalAlert('Password wajib diisi untuk akun baru.','danger'); return; }
+    const defaultPass = btoa('nim'+nim.toLowerCase());
+    result = await sb.from('users').insert({
+      nim_or_inisial: nim,
+      nama,
+      role,
+      password_hash: passHash || defaultPass,
+      angkatan: isMhs ? (ang||currentAngkatan) : null
+    });
+  }
+
+  if(result.error){ showModalAlert('Gagal: '+result.error.message,'danger'); return; }
+
+  closeModal('modal-user');
+  showUserAlert(role, editId ? '✅ Akun berhasil diperbarui!' : '✅ Akun berhasil ditambahkan! Password default: nim'+nim.toLowerCase(),'success');
+  loadUsers(role);
+}
+
+// ── HAPUS USER ────────────────────────────
+function openDelUser(id, nama){
+  delUserId = id;
+  document.getElementById('del-user-name').textContent = nama;
+  openModal('modal-del-user');
+}
+
+async function confirmDelUser(){
+  const sb = getSB();
+  if(!sb||!delUserId) return;
+  const {error} = await sb.from('users').delete().eq('id',delUserId);
+  if(error){ alert('Gagal hapus: '+error.message); return; }
+  closeModal('modal-del-user');
+  // Reload kedua tabel
+  loadUsers('mahasiswa');
+  loadUsers('dosen');
+  delUserId = null;
+}
+
+// ── IMPORT DARI DATA ADMIN ────────────────
+async function importAkunMhs(){
+  const sb = getSB();
+  if(!sb){ alert('Supabase belum terhubung.'); return; }
+  if(!DB || !DB.master || !DB.master.length){ alert('Tidak ada data mahasiswa di sistem. Buka halaman Mahasiswa & TA dulu.'); return; }
+
+  const konfirm = confirm(
+    `Import ${DB.master.reduce((s,m)=>s+m.mhs.length,0)} akun mahasiswa dari data TA angkatan ${currentAngkatan}?\n\nPassword default = "nim" + NIM masing-masing.\nAkun yang sudah ada akan dilewati.`
+  );
+  if(!konfirm) return;
+
+  showUserAlert('mahasiswa','Mengimport... harap tunggu','info');
+
+  let ok=0, skip=0, fail=0;
+  for(const m of DB.master){
+    for(const mh of m.mhs){
+      const {error} = await sb.from('users').insert({
+        nim_or_inisial: mh.nim,
+        nama: mh.nama,
+        role: 'mahasiswa',
+        password_hash: btoa('nim'+mh.nim),
+        angkatan: currentAngkatan
+      });
+      if(error){
+        if(error.code==='23505') skip++; // unique violation = sudah ada
+        else fail++;
+      } else ok++;
+    }
+  }
+
+  showUserAlert('mahasiswa',`✅ Import selesai: ${ok} ditambahkan, ${skip} sudah ada, ${fail} gagal.`,'success');
+  loadUsers('mahasiswa');
+}
+
+async function importAkunDosen(){
+  const sb = getSB();
+  if(!sb){ alert('Supabase belum terhubung.'); return; }
+  if(!DB || !DB.dosen){ alert('Tidak ada data dosen.'); return; }
+
+  const konfirm = confirm(
+    `Import ${Object.keys(DB.dosen).length} akun dosen?\n\nPassword default = "nim" + inisial (cth: nimAYS).\nAkun yang sudah ada akan dilewati.`
+  );
+  if(!konfirm) return;
+
+  showUserAlert('dosen','Mengimport...','info');
+
+  let ok=0, skip=0, fail=0;
+  for(const [kode, nama] of Object.entries(DB.dosen)){
+    const {error} = await sb.from('users').insert({
+      nim_or_inisial: kode,
+      nama,
+      role: 'dosen',
+      password_hash: btoa('nim'+kode.toLowerCase()),
+      angkatan: null
+    });
+    if(error){
+      if(error.code==='23505') skip++;
+      else fail++;
+    } else ok++;
+  }
+
+  showUserAlert('dosen',`✅ Import selesai: ${ok} ditambahkan, ${skip} sudah ada, ${fail} gagal.`,'success');
+  loadUsers('dosen');
+}
+
+// ── HELPERS ───────────────────────────────
+function showUserAlert(role, msg, type){
+  const id = role==='mahasiswa' ? 'users-mhs-alert' : 'users-dosen-alert';
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none', 5000);
+}
+
+function showModalAlert(msg, type){
+  const el = document.getElementById('modal-user-alert');
+  el.className='alert alert-'+type;
+  el.textContent=msg;
+  el.style.display='block';
+}
+</script>
+<div class="modal-overlay hidden" id="modal-angkatan">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('modal-angkatan')">×</button>
+    <div class="modal-title">Tambah Angkatan Baru</div>
+    <div class="form-group">
+      <label>Tahun Angkatan</label>
+      <input type="text" id="angkatan-inp" placeholder="cth: 2023" maxlength="4">
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px;">Angkatan baru akan dimulai dengan data kosong (dosen dan bobot akan disalin dari angkatan aktif).</div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-angkatan')">Batal</button>
+      <button class="btn btn-primary" onclick="saveAngkatan()">+ Tambah</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Import Nilai -->
+<div class="modal-overlay hidden" id="modal-import">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-import')">×</button>
+    <div class="modal-title">Import & Template Nilai</div>
+    <div class="tab-pills" id="import-tab-pills">
+      <button class="tab-pill active" onclick="switchImportTab('template',this)">📥 Download Template</button>
+      <button class="tab-pill" onclick="switchImportTab('import',this)">📤 Upload & Import</button>
+    </div>
+
+    <!-- Tab: Download Template -->
+    <div id="import-tab-template">
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Download template Excel, isi nilai di sana, lalu upload kembali. Jangan ubah kolom ID, Nama, NIM, atau nama kolom.</p>
+      <div class="form-group">
+        <label>Tipe Penilaian</label>
+        <select id="tmpl-tipe">
+          <option value="seminar">Seminar</option>
+          <option value="sidang">Sidang</option>
+          <option value="proses">Proses (Pembimbing)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="downloadTemplate()">⬇ Download Template Excel</button>
+    </div>
+
+    <!-- Tab: Upload Import -->
+    <div id="import-tab-import" style="display:none">
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Upload file template yang sudah diisi. Nilai akan otomatis masuk ke sistem. Data yang sudah ada akan ditimpa.</p>
+      <div class="form-group">
+        <label>Pilih File Excel (.xlsx)</label>
+        <input type="file" id="import-file" accept=".xlsx" onchange="previewImport(this)">
+      </div>
+      <div id="import-preview" style="margin-top:10px;"></div>
+      <div id="import-alert" style="margin-top:10px;display:none;"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-import')">Tutup</button>
+      <button class="btn btn-primary" id="btn-do-import" style="display:none" onclick="doImport()">✅ Import Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  ANGKATAN MANAGEMENT
+// ══════════════════════════════════════════════
+function openAngkatanModal(){
+  document.getElementById('angkatan-inp').value='';
+  openModal('modal-angkatan');
+}
+function saveAngkatan(){
+  const y=document.getElementById('angkatan-inp').value.trim();
+  if(!/^\d{4}$/.test(y)){alert('Masukkan 4 digit tahun, cth: 2023');return;}
+  const list=getAngkatanList();
+  if(list.includes(y)){alert('Angkatan '+y+' sudah ada.');return;}
+  list.push(y);
+  list.sort();
+  saveAngkatanList(list);
+  // Inisiasi angkatan baru dengan dosen & bobot dari angkatan aktif
+  const prevDosen={...DB.dosen};
+  const prevBobot=JSON.parse(JSON.stringify(DB.bobot));
+  const prevGrade=JSON.parse(JSON.stringify(DB.grade));
+  currentAngkatan=y;
+  DB={dosen:prevDosen,master:[],jadwal_seminar:{},jadwal_sidang:{},bobot:prevBobot,grade:prevGrade,nilai:{}};
+  saveDB();
+  closeModal('modal-angkatan');
+  switchAngkatan(y);
+}
+
+// ══════════════════════════════════════════════
+//  TEMPLATE & IMPORT
+// ══════════════════════════════════════════════
+let importData=null; // parsed rows siap import
+
+function openImportModal(){
+  switchImportTab('template', document.querySelector('#import-tab-pills .tab-pill'));
+  document.getElementById('import-file').value='';
+  document.getElementById('import-preview').innerHTML='';
+  document.getElementById('import-alert').style.display='none';
+  document.getElementById('btn-do-import').style.display='none';
+  importData=null;
+  openModal('modal-import');
+}
+function switchImportTab(tab,el){
+  document.querySelectorAll('#import-tab-pills .tab-pill').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('import-tab-template').style.display=tab==='template'?'block':'none';
+  document.getElementById('import-tab-import').style.display=tab==='import'?'block':'none';
+  document.getElementById('btn-do-import').style.display=tab==='import'?'flex':'none';
+}
+
+function downloadTemplate(){
+  const tipe=document.getElementById('tmpl-tipe').value;
+  const wb=XLSX.utils.book_new();
+  const isProses=tipe==='proses';
+  const bobot=tipe==='sidang'?DB.bobot.sidang:DB.bobot.seminar;
+
+  // Header
+  let header=['ID_Sesi','Nama_Mahasiswa','NIM','mhsIdx','Peran'];
+  if(isProses){
+    header.push(`B1_Aktivitas(${Math.round(DB.bobot.proses.B1*100)}%)`,
+                `B2_Kemandirian(${Math.round(DB.bobot.proses.B2*100)}%)`,
+                `B3_Usaha(${Math.round(DB.bobot.proses.B3*100)}%)`);
+  } else {
+    header.push(`A1_LatarBelakang(${Math.round(bobot.A1*100)}%)`,
+                `A2_Metode(${Math.round(bobot.A2*100)}%)`,
+                `A3_TataBahasa(${Math.round(bobot.A3*100)}%)`,
+                `A4_Presentasi(${Math.round(bobot.A4*100)}%)`,
+                `A5_MenjawabPertanyaan(${Math.round(bobot.A5*100)}%)`);
+  }
+
+  const rows=[header];
+
+  // Isi baris per mahasiswa per peran
+  DB.master.forEach(m=>{
+    let perans=[];
+    if(isProses){
+      perans.push({key:'ps1',kode:m.ps1});
+      if(m.ps2) perans.push({key:'ps2',kode:m.ps2});
+    } else {
+      perans.push({key:'ps1',kode:m.ps1});
+      if(m.ps2) perans.push({key:'ps2',kode:m.ps2});
+      perans.push({key:'penguji',kode:m.penguji});
+    }
+    m.mhs.forEach((mh,mi)=>{
+      const existing=(DB.nilai[m.id]||{})[tipe]||[];
+      perans.forEach(pr=>{
+        const ex=existing.find(r=>r.mhsIdx===mi&&r.peran===pr.key)||
+                 existing.find(r=>r.mhsIdx===undefined&&r.peran===pr.key)||{};
+        const peranLabel=pr.key==='ps1'?'PS1':pr.key==='ps2'?'PS2':'Penguji';
+        const dosenNama=(DB.dosen[pr.kode]||pr.kode).split(',')[0];
+        let row=[m.id, mh.nama, mh.nim, mi, `${peranLabel} (${pr.kode} - ${dosenNama})`];
+        if(isProses){
+          row.push(ex.B1!==undefined?ex.B1:'', ex.B2!==undefined?ex.B2:'', ex.B3!==undefined?ex.B3:'');
+        } else {
+          row.push(ex.A1!==undefined?ex.A1:'', ex.A2!==undefined?ex.A2:'',
+                   ex.A3!==undefined?ex.A3:'', ex.A4!==undefined?ex.A4:'', ex.A5!==undefined?ex.A5:'');
+        }
+        rows.push(row);
+      });
+    });
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  // Highlight header
+  ws['!cols']=header.map((_,i)=>({wch:i<3?28:i===3?8:i===4?28:10}));
+  // Freeze row 1
+  ws['!freeze']={xSplit:0,ySplit:1};
+
+  // Sheet info
+  const wsInfo=XLSX.utils.aoa_to_sheet([
+    ['PETUNJUK PENGISIAN TEMPLATE'],
+    [''],
+    ['1. Isi nilai pada kolom A1-A5 (atau B1-B3 untuk Proses)'],
+    ['2. Nilai berupa angka 0-100'],
+    ['3. JANGAN ubah kolom: ID_Sesi, Nama_Mahasiswa, NIM, mhsIdx, Peran'],
+    ['4. JANGAN tambah/hapus baris'],
+    ['5. Simpan sebagai .xlsx lalu upload di menu Import Nilai'],
+    [''],
+    ['Tipe penilaian: '+tipe.toUpperCase()],
+    ['Angkatan: '+currentAngkatan],
+    ['Total baris data: '+(rows.length-1)],
+  ]);
+  wsInfo['!cols']=[{wch:60}];
+
+  XLSX.utils.book_append_sheet(wb, wsInfo, 'Petunjuk');
+  XLSX.utils.book_append_sheet(wb, ws, 'Nilai_'+tipe.charAt(0).toUpperCase()+tipe.slice(1));
+  XLSX.writeFile(wb, `Template_Nilai_${tipe}_${currentAngkatan}.xlsx`);
+}
+
+let _importParsed=null;
+function previewImport(input){
+  document.getElementById('import-preview').innerHTML='';
+  document.getElementById('import-alert').style.display='none';
+  document.getElementById('btn-do-import').style.display='none';
+  _importParsed=null;
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      // Cari sheet Nilai_*
+      const sheetName=wb.SheetNames.find(n=>n.startsWith('Nilai_'));
+      if(!sheetName){showImportAlert('Sheet "Nilai_Seminar/Sidang/Proses" tidak ditemukan.','danger');return;}
+      const tipe=sheetName.replace('Nilai_','').toLowerCase();
+      const ws=wb.Sheets[sheetName];
+      const rawRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rawRows.length<2){showImportAlert('File kosong atau tidak ada data.','danger');return;}
+      const header=rawRows[0];
+      // Deteksi kolom nilai (semua setelah kolom Peran)
+      const isProses=tipe==='proses';
+      const keys=isProses?['B1','B2','B3']:['A1','A2','A3','A4','A5'];
+      // Parse rows
+      let parsed=[],errors=[],ok=0;
+      rawRows.slice(1).forEach((row,ri)=>{
+        const id=String(row[0]||'').trim();
+        const mi=parseInt(row[3]);
+        const peranRaw=String(row[4]||'');
+        const peran=peranRaw.startsWith('PS1')?'ps1':peranRaw.startsWith('PS2')?'ps2':peranRaw.startsWith('Penguji')?'penguji':null;
+        if(!id||!peran||isNaN(mi)){errors.push(`Baris ${ri+2}: ID/Peran/mhsIdx tidak valid`);return;}
+        if(!DB.master.find(m=>m.id===id)){errors.push(`Baris ${ri+2}: ID "${id}" tidak ditemukan`);return;}
+        const vals={};
+        let hasVal=false;
+        keys.forEach((k,ki)=>{
+          const v=row[5+ki];
+          if(v!==''&&v!==null&&v!==undefined){vals[k]=parseFloat(v)||0;hasVal=true;}
+        });
+        if(hasVal){parsed.push({id,mhsIdx:mi,peran,...vals});ok++;}
+      });
+      _importParsed={tipe,rows:parsed};
+      // Preview
+      let prev=`<div class="alert alert-success" style="margin-bottom:8px">✅ File valid: <strong>${ok} baris</strong> nilai siap diimport (tipe: ${tipe.toUpperCase()})</div>`;
+      if(errors.length) prev+=`<div class="alert alert-danger">${errors.slice(0,5).join('<br>')}${errors.length>5?`<br>...dan ${errors.length-5} error lainnya`:''}</div>`;
+      prev+=`<div style="font-size:12px;color:#888;">Klik "Import Sekarang" untuk menyimpan ke sistem.</div>`;
+      document.getElementById('import-preview').innerHTML=prev;
+      document.getElementById('btn-do-import').style.display='flex';
+    } catch(err){showImportAlert('Gagal membaca file: '+err.message,'danger');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportAlert(msg,type){
+  const el=document.getElementById('import-alert');
+  el.className='alert alert-'+(type||'danger');
+  el.textContent=msg; el.style.display='block';
+}
+
+function doImport(){
+  if(!_importParsed){return;}
+  const {tipe,rows}=_importParsed;
+  let count=0;
+  rows.forEach(r=>{
+    const {id,mhsIdx,peran,...vals}=r;
+    if(!DB.nilai[id]) DB.nilai[id]={};
+    if(!DB.nilai[id][tipe]) DB.nilai[id][tipe]=[];
+    // Hapus baris lama untuk kombinasi mhsIdx+peran ini
+    DB.nilai[id][tipe]=DB.nilai[id][tipe].filter(x=>!(x.peran===peran&&(x.mhsIdx===mhsIdx||x.mhsIdx===undefined)));
+    DB.nilai[id][tipe].push({mhsIdx,peran,...vals});
+    count++;
+  });
+  saveDB();
+  showImportAlert(`✅ Berhasil mengimport ${count} baris nilai ${tipe.toUpperCase()}!`,'success');
+  document.getElementById('btn-do-import').style.display='none';
+  renderDashboard();
+  renderInputList();
+  renderRekap();
+  _importParsed=null;
+}
+</script>
+</body>
+</html>

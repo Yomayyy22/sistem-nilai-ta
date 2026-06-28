@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Mahasiswa — Sistem TA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F6F3;--card:#fff;--border:#E8E6E0;--border2:#d4d1c9;
+  --text:#1a1a1a;--muted:#888;--accent:#4F6BED;--accent2:#3a52d4;
+  --success:#1a6b25;--success-bg:#d4f0d7;--warn:#7a5200;--warn-bg:#fef3d0;
+  --danger:#8a1a1a;--danger-bg:#fde0e0;--teal:#0F6E56;--teal-bg:#E1F5EE;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+/* ── AUTH SCREEN ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:400px;}
+.auth-logo{font-size:28px;margin-bottom:6px;}
+.auth-title{font-size:20px;font-weight:700;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+/* ── APP SHELL ── */
+.app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#5a3d9e;}
+.topbar-name{font-weight:600;font-size:13px;}
+.topbar-nim{font-size:11px;color:var(--muted);}
+.tabs{display:flex;gap:2px;background:#F0EEE8;border-radius:10px;padding:3px;overflow-x:auto;}
+.tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);white-space:nowrap;}
+.tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.content{padding:20px;max-width:900px;margin:0 auto;width:100%;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:10px;}
+
+/* ── STATUS BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-draft{background:#f0eee8;color:#888;}
+.badge-menunggu{background:#fef3d0;color:#7a5200;}
+.badge-disetujui{background:#d4f0d7;color:#1a6b25;}
+.badge-revisi{background:#fde0e0;color:#8a1a1a;}
+
+/* ── BERKAS LIST ── */
+.berkas-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;}
+.berkas-item:last-child{border-bottom:none;}
+.berkas-icon{width:36px;height:36px;border-radius:8px;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.berkas-info{flex:1;min-width:0;}
+.berkas-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.berkas-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.berkas-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.03em;}
+input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);outline:none;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,107,237,0.1);}
+textarea{resize:vertical;min-height:80px;}
+.file-drop{border:2px dashed var(--border2);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.15s;}
+.file-drop:hover,.file-drop.drag{border-color:var(--accent);background:#F0F3FF;}
+.file-drop-icon{font-size:28px;margin-bottom:8px;}
+.file-drop-text{font-size:13px;color:var(--muted);}
+.file-drop input[type=file]{display:none;}
+
+/* ── BUTTONS ── */
+.btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text);transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:#f0eee8;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent2);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-danger{color:#c0392b;border-color:#f0d0cd;}
+.btn-danger:hover{background:#fdf0ee;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* ── NILAI CARD ── */
+.nilai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.nilai-box{background:#F7F6F3;border-radius:10px;padding:14px;text-align:center;}
+.nilai-label{font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:4px;}
+.nilai-value{font-size:22px;font-weight:700;}
+.nilai-grade{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* ── JADWAL ── */
+.jadwal-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
+.jadwal-item:last-child{border-bottom:none;}
+.jadwal-date{text-align:center;min-width:52px;}
+.jadwal-day{font-size:20px;font-weight:700;}
+.jadwal-month{font-size:10px;color:var(--muted);text-transform:uppercase;}
+.jadwal-info{flex:1;}
+.jadwal-title{font-weight:600;font-size:13px;}
+.jadwal-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* ── KARTU BIMBINGAN ── */
+.kb-item{padding:12px;background:#F7F6F3;border-radius:8px;margin-bottom:8px;}
+.kb-date{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kb-topik{font-weight:600;font-size:13px;}
+.kb-catatan{font-size:12px;color:#555;margin-top:4px;}
+
+/* ── ALERT ── */
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;}
+.alert-success{background:var(--success-bg);color:var(--success);}
+.alert-danger{background:var(--danger-bg);color:var(--danger);}
+.alert-warn{background:var(--warn-bg);color:var(--warn);}
+.alert-info{background:var(--teal-bg);color:var(--teal);}
+
+/* ── HADIR TABLE ── */
+.hadir-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.hadir-row:last-child{border-bottom:none;}
+.hadir-id{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#EEEDFE;color:#5a3d9e;}
+
+/* ── LOADING ── */
+.spinner{width:20px;height:20px;border:2px solid #e0ddd6;border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{text-align:center;padding:32px;color:var(--muted);}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══ -->
+<div class="auth-wrap" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">🎓</div>
+    <div class="auth-title">Portal Mahasiswa</div>
+    <div class="auth-sub">Sistem Pendaftaran & Monitoring Tugas Akhir</div>
+    <div id="auth-alert" style="display:none;margin-bottom:14px;"></div>
+    <div class="form-group"><label>NIM</label><input type="text" id="login-nim" placeholder="23102210XXX" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">Masuk</button>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted);">Belum punya akun? Hubungi koordinator TA</div>
+    <div style="text-align:center;margin-top:8px;"><button onclick="document.getElementById('modal-lupa').style.display='flex'" style="border:none;background:none;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:underline;">Lupa password?</button></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="avatar" id="user-avatar">?</div>
+      <div><div class="topbar-name" id="user-name">—</div><div class="topbar-nim" id="user-nim">—</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="tabs" id="main-tabs">
+        <button class="tab active" onclick="switchTab('dashboard',this)">Dashboard</button>
+        <button class="tab" onclick="switchTab('seminar',this)">Seminar</button>
+        <button class="tab" onclick="switchTab('sidang',this)">Sidang</button>
+        <button class="tab" onclick="switchTab('bimbingan',this)">Bimbingan</button>
+        <button class="tab" onclick="switchTab('hadir',this)">Bukti Hadir</button>
+        <button class="tab" onclick="switchTab('jadwal',this)">Jadwal</button>
+        <button class="tab" onclick="switchTab('password',this)">🔑 Password</button>
+      </div>
+      <button class="btn btn-sm" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div id="dash-alert"></div>
+      <div class="card">
+        <div class="card-title">Nilai saya</div>
+        <div class="nilai-grid" id="nilai-grid">
+          <div class="nilai-box"><div class="nilai-label">Seminar</div><div class="nilai-value" id="v-seminar">—</div></div>
+          <div class="nilai-box"><div class="nilai-label">Sidang</div><div class="nilai-value" id="v-sidang">—</div></div>
+          <div class="nilai-box"><div class="nilai-label">Final</div><div class="nilai-value" id="v-final">—</div><div class="nilai-grade" id="v-grade"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Status pendaftaran</div>
+        <div id="status-seminar-card" style="margin-bottom:10px;padding:12px;background:#F7F6F3;border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;font-size:13px;">Seminar Proposal</span>
+            <span id="badge-seminar" class="badge badge-draft">Draft</span>
+          </div>
+          <div id="catatan-seminar" style="font-size:12px;color:#888;margin-top:6px;display:none;"></div>
+        </div>
+        <div id="status-sidang-card" style="padding:12px;background:#F7F6F3;border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;font-size:13px;">Sidang Skripsi</span>
+            <span id="badge-sidang" class="badge badge-draft">Draft</span>
+          </div>
+          <div id="catatan-sidang" style="font-size:12px;color:#888;margin-top:6px;display:none;"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Jadwal saya</div>
+        <div id="jadwal-saya"></div>
+      </div>
+    </div>
+
+    <!-- SEMINAR -->
+    <div id="tab-seminar" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>Pendaftaran Seminar</span>
+          <span id="badge-seminar2" class="badge badge-draft">Draft</span>
+        </div>
+        <div id="seminar-alert"></div>
+        <div class="section-title">Berkas yang diperlukan</div>
+        <div id="berkas-seminar-list"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+          <div class="section-title">Upload berkas</div>
+          <div class="form-group">
+            <label>Jenis berkas</label>
+            <select id="seminar-jenis">
+              <option value="proposal">Proposal</option>
+              <option value="checklist_proposal">Checklist Proposal</option>
+              <option value="bahan_presentasi">Bahan Presentasi</option>
+            </select>
+          </div>
+          <label class="file-drop" id="seminar-drop" ondragover="dragOver(event,'seminar-drop')" ondragleave="dragLeave('seminar-drop')" ondrop="dropFile(event,'seminar-file')">
+            <input type="file" id="seminar-file" accept=".pdf" onchange="fileChosen(this,'seminar-drop-text')">
+            <div class="file-drop-icon">📄</div>
+            <div class="file-drop-text" id="seminar-drop-text">Klik atau seret file PDF ke sini</div>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-primary" onclick="uploadBerkas('seminar')">⬆ Upload</button>
+            <button class="btn btn-primary" id="btn-submit-seminar" onclick="submitPendaftaran('seminar')">📨 Ajukan ke Dosen</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Template berkas seminar</div>
+        <div id="template-seminar-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- SIDANG -->
+    <div id="tab-sidang" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>Pendaftaran Sidang Skripsi</span>
+          <span id="badge-sidang2" class="badge badge-draft">Draft</span>
+        </div>
+        <div id="sidang-alert"></div>
+        <div class="section-title">Berkas yang diperlukan</div>
+        <div id="berkas-sidang-list"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+          <div class="section-title">Upload berkas</div>
+          <div class="form-group">
+            <label>Jenis berkas</label>
+            <select id="sidang-jenis">
+              <option value="transkrip_sementara">Transkrip Sementara</option>
+              <option value="bahan_presentasi">Bahan Presentasi</option>
+              <option value="artikel_ilmiah">Artikel Ilmiah</option>
+              <option value="bukti_plagiarisme">Bukti Cek Plagiarisme</option>
+              <option value="draf_skripsi">Draf Naskah Skripsi</option>
+            </select>
+          </div>
+          <label class="file-drop" id="sidang-drop" ondragover="dragOver(event,'sidang-drop')" ondragleave="dragLeave('sidang-drop')" ondrop="dropFile(event,'sidang-file')">
+            <input type="file" id="sidang-file" accept=".pdf" onchange="fileChosen(this,'sidang-drop-text')">
+            <div class="file-drop-icon">📄</div>
+            <div class="file-drop-text" id="sidang-drop-text">Klik atau seret file PDF ke sini</div>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-primary" onclick="uploadBerkas('sidang')">⬆ Upload</button>
+            <button class="btn btn-primary" id="btn-submit-sidang" onclick="submitPendaftaran('sidang')">📨 Ajukan ke Dosen</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Template berkas sidang</div>
+        <div id="template-sidang-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- BIMBINGAN -->
+    <div id="tab-bimbingan" style="display:none;">
+      <div class="card">
+        <div class="card-title">Tambah catatan bimbingan</div>
+        <div id="kb-alert"></div>
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group" style="margin:0"><label>Tanggal</label><input type="date" id="kb-tgl"></div>
+          <div class="form-group" style="margin:0">
+            <label>Bimbingan dengan</label>
+            <select id="kb-dosen">
+              <option value="ps1">PS1 (Pembimbing 1)</option>
+              <option value="ps2">PS2 (Pembimbing 2)</option>
+              <option value="ps1+ps2">PS1 + PS2 (Bersama)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;"><label>Topik / Materi</label><input type="text" id="kb-topik" placeholder="cth: Revisi bab 3 metodologi"></div>
+        <div class="form-group"><label>Catatan hasil bimbingan</label><textarea id="kb-catatan" placeholder="Tuliskan poin-poin penting..."></textarea></div>
+        <button class="btn btn-primary" onclick="saveKB()">💾 Simpan</button>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span>Riwayat bimbingan</span>
+          <button class="btn btn-sm" onclick="cetakKB()">🖨 Cetak / Export</button>
+        </div>
+        <div id="kb-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- BUKTI HADIR -->
+    <div id="tab-hadir" style="display:none;">
+      <div class="card">
+        <div class="card-title">Upload bukti kehadiran seminar</div>
+        <div id="hadir-alert"></div>
+        <div class="form-group">
+          <label>Sesi seminar yang dihadiri</label>
+          <select id="hadir-sesi"></select>
+        </div>
+        <label class="file-drop" id="hadir-drop" ondragover="dragOver(event,'hadir-drop')" ondragleave="dragLeave('hadir-drop')" ondrop="dropFile(event,'hadir-file')">
+          <input type="file" id="hadir-file" accept=".pdf,.jpg,.jpeg,.png" onchange="fileChosen(this,'hadir-drop-text')">
+          <div class="file-drop-icon">📸</div>
+          <div class="file-drop-text" id="hadir-drop-text">Upload bukti hadir (PDF/foto)</div>
+        </label>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="uploadHadir()">⬆ Upload Bukti</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Daftar hadir seminar teman</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Semua mahasiswa yang sudah upload bukti hadir untuk sesi seminar</div>
+        <div class="form-group">
+          <label>Filter sesi</label>
+          <select id="hadir-filter-sesi" onchange="loadDaftarHadir()"><option value="">Semua sesi</option></select>
+        </div>
+        <div id="daftar-hadir-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- JADWAL -->
+    <div id="tab-jadwal" style="display:none;">
+      <div class="card">
+        <div class="card-title">Jadwal seminar & sidang</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Data jadwal semua mahasiswa angkatan</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <input type="text" id="jadwal-q" placeholder="Cari nama atau NIM..." oninput="renderJadwalPublik()" style="flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;">
+          <select id="jadwal-tipe" onchange="renderJadwalPublik()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);">
+            <option value="">Semua (Seminar & Sidang)</option>
+            <option value="Seminar">Seminar saja</option>
+            <option value="Sidang">Sidang saja</option>
+          </select>
+          <select id="jadwal-sort" onchange="renderJadwalPublik()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);">
+            <option value="asc">Tanggal: Terlama dulu</option>
+            <option value="desc">Tanggal: Terbaru dulu</option>
+            <option value="nama">Nama A–Z</option>
+          </select>
+        </div>
+        <div id="jadwal-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- PASSWORD -->
+    <div id="tab-password" style="display:none;">
+      <div class="card" style="max-width:460px;margin:0 auto;">
+        <div class="card-title">Ganti Password</div>
+        <div id="pass-alert"></div>
+        <div class="form-group"><label>Password lama</label><input type="password" id="pass-lama" placeholder="Password saat ini"></div>
+        <div class="form-group"><label>Password baru</label><input type="password" id="pass-baru" placeholder="Minimal 6 karakter"></div>
+        <div class="form-group"><label>Konfirmasi password baru</label><input type="password" id="pass-konfirm" placeholder="Ulangi password baru"></div>
+        <button class="btn btn-primary" onclick="gantiPassword()">🔐 Ganti Password</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- MODAL: Lupa Password -->
+<div id="modal-lupa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border-radius:14px;padding:28px;width:380px;max-width:95vw;position:relative;">
+    <button onclick="document.getElementById('modal-lupa').style.display='none'" style="position:absolute;top:14px;right:14px;border:none;background:none;font-size:20px;cursor:pointer;color:#888;">×</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Reset Password</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px;">Masukkan NIM dan password baru langsung.</div>
+    <div id="lupa-alert" style="display:none;margin-bottom:12px;"></div>
+    <div class="form-group"><label>NIM</label><input type="text" id="lupa-nim" placeholder="231022XXXXX"></div>
+    <div class="form-group"><label>Password Baru</label><input type="password" id="lupa-pass1" placeholder="Minimal 6 karakter"></div>
+    <div class="form-group"><label>Konfirmasi Password Baru</label><input type="password" id="lupa-pass2" placeholder="Ulangi password baru"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="resetPassword()">🔐 Reset Password</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG — GANTI DENGAN NILAI SUPABASE ANDA
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://jfigezwgpjdcstfhawmq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaWdlendncGpkY3N0Zmhhd21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjA3MzMsImV4cCI6MjA5ODEzNjczM30.ne8vbzqzXScutIkcqgpAJrSMbNjZN0DXmbxVVCaylzk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Data admin dari localStorage (dibaca dari sistem nilai yang sudah ada)
+const SK_ADMIN = 'ta2022_v1'; // sesuaikan dengan key angkatan
+
+let currentUser = null;
+let adminDB = null;
+let pendSeminar = null;
+let pendSidang = null;
+
+// ── INIT ──────────────────────────────────────
+window.onload = async () => {
+  const saved = localStorage.getItem('portal_user');
+  if(saved){ currentUser = JSON.parse(saved); showApp(); }
+  loadAdminDB();
+};
+
+function loadAdminDB(){
+  // Coba baca data admin dari localStorage (sistem nilai yang sama)
+  const keys = Object.keys(localStorage).filter(k=>k.startsWith('ta_'));
+  for(const k of keys){
+    try{ const d=JSON.parse(localStorage.getItem(k)); if(d&&d.master){ adminDB=d; break; } }catch(e){}
+  }
+  // Fallback: baca semua ta_*_v1
+  if(!adminDB){
+    try{ adminDB=JSON.parse(localStorage.getItem('ta2022_v6')||'null'); }catch(e){}
+  }
+}
+
+// ── AUTH ──────────────────────────────────────
+async function doLogin(){
+  const nim = document.getElementById('login-nim').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if(!nim||!pass){ showAuthAlert('NIM dan password wajib diisi.','danger'); return; }
+
+  showAuthAlert('Memeriksa...','info');
+  const {data,error} = await sb.from('users')
+    .select('*').eq('nim_or_inisial',nim).eq('role','mahasiswa').single();
+
+  if(error||!data){ showAuthAlert('NIM tidak ditemukan.','danger'); return; }
+
+  // Simple password check (production: gunakan bcrypt di edge function)
+  if(data.password_hash !== btoa(pass)){
+    showAuthAlert('Password salah.','danger'); return;
+  }
+
+  currentUser = data;
+  localStorage.setItem('portal_user', JSON.stringify(data));
+  showApp();
+}
+
+function doLogout(){
+  localStorage.removeItem('portal_user');
+  currentUser = null;
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+function showAuthAlert(msg,type){
+  const el=document.getElementById('auth-alert');
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+}
+
+// ── SHOW APP ──────────────────────────────────
+async function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+
+  const inisial = currentUser.nama.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = inisial;
+  document.getElementById('user-name').textContent = currentUser.nama;
+  document.getElementById('user-nim').textContent = currentUser.nim_or_inisial;
+
+  await Promise.all([
+    loadNilai(), loadPendaftaran(), loadKB(), loadSesiOptions()
+  ]);
+
+  renderDashboard();
+  loadTemplates('seminar');
+  loadTemplates('sidang');
+  loadDaftarHadir();
+  renderJadwalPublik();
+  loadKB();
+}
+
+function switchTab(tab, el){
+  document.querySelectorAll('[id^="tab-"]').forEach(x=>x.style.display='none');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display='block';
+  el.classList.add('active');
+}
+
+// ── NILAI ─────────────────────────────────────
+function loadNilai(){
+  if(!adminDB||!currentUser) return;
+  const mhsData = adminDB.master ? adminDB.master.find(m=>
+    m.mhs.some(mh=>mh.nim===currentUser.nim_or_inisial)
+  ) : null;
+  if(!mhsData) return;
+  const mi = mhsData.mhs.findIndex(mh=>mh.nim===currentUser.nim_or_inisial);
+  const nilai = adminDB.nilai?.[mhsData.id];
+  if(!nilai) return;
+
+  const bobot = adminDB.bobot||{seminar:{A1:0.20,A2:0.30,A3:0.15,A4:0.10,A5:0.25},sidang:{A1:0.35,A2:0.15,A3:0.15,A4:0.10,A5:0.25}};
+  const bf = adminDB.bobot?.bobot_final||{seminar:0.30,sidang:0.30,proses:0.40};
+  const fm = adminDB.bobot?.formula||{seminar:{pembimbing:0.60,penguji:0.40},sidang:{pembimbing:0.60,penguji:0.40}};
+
+  const calcSS=(rows,b,tipe)=>{
+    if(!rows||!rows.length) return null;
+    const r2=rows.filter(r=>r.mhsIdx===mi||r.mhsIdx===undefined);
+    let pb1=null,pb2=null,pg=null;
+    r2.forEach(r=>{if(r.peran==='ps1')pb1=r;else if(r.peran==='ps2')pb2=r;else pg=r;});
+    const sr=r=>{if(!r)return null;if(![r.A1,r.A2,r.A3,r.A4,r.A5].some(x=>x>0))return null;return b.A1*(r.A1||0)+b.A2*(r.A2||0)+b.A3*(r.A3||0)+b.A4*(r.A4||0)+b.A5*(r.A5||0);};
+    const s1=sr(pb1),s2=sr(pb2),sp=sr(pg);
+    if(s1===null&&s2===null) return null;
+    const avg=(s1!==null&&s2!==null)?(s1+s2)/2:(s1!==null?s1:s2);
+    const f=fm[tipe]||{pembimbing:0.60,penguji:0.40};
+    return parseFloat((f.pembimbing*avg+(sp!==null?f.penguji*sp:f.penguji*avg)).toFixed(2));
+  };
+
+  const sm=calcSS(nilai.seminar,bobot.seminar,'seminar');
+  const sd=calcSS(nilai.sidang,bobot.sidang,'sidang');
+  let num=0,den=0;
+  if(sm!==null){num+=bf.seminar*sm;den+=bf.seminar;}
+  if(sd!==null){num+=bf.sidang*sd;den+=bf.sidang;}
+  const final=den>0?parseFloat((num/den).toFixed(2)):null;
+
+  const grade=s=>{
+    if(!s) return null;
+    const g=adminDB.grade||[];
+    const sorted=[...g].sort((a,b)=>b.min-a.min);
+    for(const gr of sorted) if(s>=gr.min) return gr.grade;
+    return 'E';
+  };
+
+  document.getElementById('v-seminar').textContent=sm!==null?sm.toFixed(2):'—';
+  document.getElementById('v-sidang').textContent=sd!==null?sd.toFixed(2):'—';
+  document.getElementById('v-final').textContent=final!==null?final.toFixed(2):'—';
+  document.getElementById('v-grade').textContent=final!==null?('Grade: '+grade(final)):'';
+}
+
+// ── PENDAFTARAN ───────────────────────────────
+async function loadPendaftaran(){
+  if(!currentUser) return;
+  const {data:pSm} = await sb.from('pendaftaran_seminar').select('*').eq('user_id',currentUser.id).maybeSingle();
+  const {data:pSd} = await sb.from('pendaftaran_sidang').select('*').eq('user_id',currentUser.id).maybeSingle();
+  pendSeminar = pSm;
+  pendSidang = pSd;
+  updateBadge('seminar', pSm?.status||'draft');
+  updateBadge('sidang', pSd?.status||'draft');
+  if(pSm?.catatan_dosen){
+    document.getElementById('catatan-seminar').textContent='Catatan dosen: '+pSm.catatan_dosen;
+    document.getElementById('catatan-seminar').style.display='block';
+  }
+  if(pSd?.catatan_dosen){
+    document.getElementById('catatan-sidang').textContent='Catatan dosen: '+pSd.catatan_dosen;
+    document.getElementById('catatan-sidang').style.display='block';
+  }
+  loadBerkas('seminar');
+  loadBerkas('sidang');
+}
+
+function updateBadge(tipe, status){
+  const ids = tipe==='seminar'?['badge-seminar','badge-seminar2']:['badge-sidang','badge-sidang2'];
+  const label = {draft:'Draft',menunggu:'Menunggu review',disetujui:'Disetujui ✓',revisi:'Perlu revisi'}[status]||status;
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.className='badge badge-'+status;
+    el.textContent=label;
+  });
+}
+
+async function loadBerkas(tipe){
+  if(!currentUser) return;
+  const pendId = tipe==='seminar'?pendSeminar?.id:pendSidang?.id;
+  const listEl = document.getElementById('berkas-'+tipe+'-list');
+  if(!pendId){ listEl.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">Belum ada berkas diupload.</div>'; return; }
+
+  const {data} = await sb.from('berkas').select('*').eq('pendaftaran_id',pendId).order('uploaded_at');
+  if(!data||!data.length){ listEl.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">Belum ada berkas diupload.</div>'; return; }
+
+  const labelMap={
+    proposal:'Proposal',checklist_proposal:'Checklist Proposal',bahan_presentasi:'Bahan Presentasi',
+    transkrip_sementara:'Transkrip Sementara',
+    artikel_ilmiah:'Artikel Ilmiah',bukti_plagiarisme:'Bukti Cek Plagiarisme',draf_skripsi:'Draf Naskah Skripsi'
+  };
+  listEl.innerHTML = data.map(b=>`
+    <div class="berkas-item">
+      <div class="berkas-icon">📄</div>
+      <div class="berkas-info">
+        <div class="berkas-name">${b.nama_file}</div>
+        <div class="berkas-meta">${labelMap[b.jenis_berkas]||b.jenis_berkas} · ${new Date(b.uploaded_at).toLocaleDateString('id-ID')}</div>
+      </div>
+      <div class="berkas-actions">
+        <button class="btn btn-sm" onclick="downloadBerkas('${b.storage_path}','${b.nama_file}')">⬇ Unduh</button>
+        <button class="btn btn-sm btn-danger" onclick="hapusBerkas('${b.id}','${tipe}')">Hapus</button>
+      </div>
+    </div>`).join('');
+}
+
+async function uploadBerkas(tipe){
+  const file = document.getElementById(tipe+'-file').files[0];
+  const jenis = document.getElementById(tipe+'-jenis').value;
+  if(!file){ showAlert(tipe+'-alert','Pilih file PDF terlebih dahulu.','danger'); return; }
+  if(file.size>10*1024*1024){ showAlert(tipe+'-alert','Ukuran file maksimal 10MB.','danger'); return; }
+
+  showAlert(tipe+'-alert','Mengupload...','info');
+
+  // Pastikan ada record pendaftaran
+  let pendId = tipe==='seminar'?pendSeminar?.id:pendSidang?.id;
+  if(!pendId){
+    const tbl = tipe==='seminar'?'pendaftaran_seminar':'pendaftaran_sidang';
+    const mhsData = getMhsData();
+    const {data:pNew,error:pErr} = await sb.from(tbl).insert({
+      user_id:currentUser.id, sesi_id:mhsData?.id||'', status:'draft'
+    }).select().single();
+    if(pErr){ showAlert(tipe+'-alert','Gagal membuat pendaftaran: '+pErr.message,'danger'); return; }
+    pendId = pNew.id;
+    if(tipe==='seminar') pendSeminar=pNew; else pendSidang=pNew;
+  }
+
+  const path = `${currentUser.nim_or_inisial}/${tipe}/${jenis}_${Date.now()}_${file.name}`;
+  const {error:upErr} = await sb.storage.from('berkas-ta').upload(path, file, {upsert:true});
+  if(upErr){ showAlert(tipe+'-alert','Gagal upload: '+upErr.message,'danger'); return; }
+
+  await sb.from('berkas').insert({
+    user_id:currentUser.id, pendaftaran_id:pendId,
+    tipe_pendaftaran:tipe, jenis_berkas:jenis,
+    nama_file:file.name, storage_path:path, ukuran:file.size
+  });
+
+  showAlert(tipe+'-alert','✅ Berkas berhasil diupload!','success');
+  document.getElementById(tipe+'-file').value='';
+  document.getElementById(tipe+'-drop-text').textContent='Klik atau seret file PDF ke sini';
+  loadBerkas(tipe);
+}
+
+async function hapusBerkas(id, tipe){
+  if(!confirm('Hapus berkas ini?')) return;
+  await sb.from('berkas').delete().eq('id',id);
+  loadBerkas(tipe);
+}
+
+async function downloadBerkas(path, nama){
+  const {data} = await sb.storage.from('berkas-ta').createSignedUrl(path, 60);
+  if(data?.signedUrl){ const a=document.createElement('a'); a.href=data.signedUrl; a.download=nama; a.click(); }
+}
+
+async function submitPendaftaran(tipe){
+  const pendId = tipe==='seminar'?pendSeminar?.id:pendSidang?.id;
+  if(!pendId){ showAlert(tipe+'-alert','Upload berkas dulu sebelum mengajukan.','danger'); return; }
+  if(!confirm('Ajukan pendaftaran '+tipe+' ke dosen pembimbing?')) return;
+
+  const tbl = tipe==='seminar'?'pendaftaran_seminar':'pendaftaran_sidang';
+  await sb.from(tbl).update({status:'menunggu',submitted_at:new Date().toISOString()}).eq('id',pendId);
+  if(tipe==='seminar') pendSeminar.status='menunggu'; else pendSidang.status='menunggu';
+  updateBadge(tipe,'menunggu');
+  showAlert(tipe+'-alert','✅ Pendaftaran diajukan! Menunggu review dosen.','success');
+}
+
+// ── KARTU BIMBINGAN ───────────────────────────
+async function loadKB(){
+  if(!currentUser) return;
+  const {data} = await sb.from('kartu_bimbingan').select('*').eq('user_id',currentUser.id).order('tanggal',{ascending:false});
+  const el = document.getElementById('kb-list');
+  if(!data||!data.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">Belum ada catatan bimbingan.</div>'; return; }
+  el.innerHTML = data.map(kb=>`
+    <div class="kb-item">
+      <div class="kb-date">${new Date(kb.tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
+      <div class="kb-topik">${kb.topik}</div>
+      ${kb.catatan?`<div class="kb-catatan">${kb.catatan}</div>`:''}
+    </div>`).join('');
+
+  // Populate dosen select
+  if(adminDB){
+    const mhsData = getMhsData();
+    if(mhsData){
+      const sel = document.getElementById('kb-dosen');
+      sel.innerHTML='';
+      [mhsData.ps1, mhsData.ps2].filter(Boolean).forEach(k=>{
+        const o=document.createElement('option'); o.value=k; o.textContent=k+' — '+(adminDB.dosen?.[k]||k).split(',')[0]; sel.appendChild(o);
+      });
+    }
+  }
+}
+
+async function saveKB(){
+  const tgl=document.getElementById('kb-tgl').value;
+  const dosenVal=document.getElementById('kb-dosen').value; // ps1, ps2, atau ps1+ps2
+  const topik=document.getElementById('kb-topik').value.trim();
+  const catatan=document.getElementById('kb-catatan').value.trim();
+  if(!tgl||!topik){ showAlert('kb-alert','Tanggal dan topik wajib diisi.','danger'); return; }
+
+  const mhsData=getMhsData();
+  // Tentukan label dosen berdasarkan pilihan
+  let dosenLabel='';
+  if(dosenVal==='ps1'&&mhsData) dosenLabel=mhsData.ps1+(adminDB?.dosen?.[mhsData.ps1]?' ('+adminDB.dosen[mhsData.ps1].split(',')[0]+')':'');
+  else if(dosenVal==='ps2'&&mhsData) dosenLabel=(mhsData.ps2||'PS2')+(adminDB?.dosen?.[mhsData.ps2]?' ('+adminDB.dosen[mhsData.ps2].split(',')[0]+')':'');
+  else if(mhsData) dosenLabel='PS1+PS2: '+(mhsData.ps1||'')+(mhsData.ps2?' & '+mhsData.ps2:'');
+
+  await sb.from('kartu_bimbingan').insert({
+    user_id:currentUser.id, dosen_id:null,
+    tanggal:tgl, topik, catatan:((catatan?catatan+'
+':'')+'[Bimbingan dengan: '+dosenLabel+']')
+  });
+  showAlert('kb-alert','✅ Catatan bimbingan disimpan!','success');
+  document.getElementById('kb-tgl').value='';
+  document.getElementById('kb-topik').value='';
+  document.getElementById('kb-catatan').value='';
+  loadKB();
+}
+
+function cetakKB(){
+  window.print();
+}
+
+// ── BUKTI HADIR ───────────────────────────────
+async function loadSesiOptions(){
+  if(!adminDB?.master) return;
+  const sel1 = document.getElementById('hadir-sesi');
+  const sel2 = document.getElementById('hadir-filter-sesi');
+  sel1.innerHTML=''; sel2.innerHTML='<option value="">Semua sesi</option>';
+  adminDB.master.forEach(m=>{
+    const nl=m.mhs.map(x=>x.nama).join(' & ');
+    const jSem=adminDB.jadwal_seminar?.[m.id];
+    const tgl=jSem?.tgl?new Date(jSem.tgl).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'-';
+    const text=`${m.id} — ${nl} (${tgl})`;
+    [sel1,sel2].forEach(sel=>{
+      const o=document.createElement('option'); o.value=m.id; o.textContent=text; sel.appendChild(o);
+    });
+  });
+}
+
+async function uploadHadir(){
+  const file = document.getElementById('hadir-file').files[0];
+  const sesi = document.getElementById('hadir-sesi').value;
+  if(!file||!sesi){ showAlert('hadir-alert','Pilih sesi dan file.','danger'); return; }
+
+  showAlert('hadir-alert','Mengupload...','info');
+  const path = `hadir/${sesi}/${currentUser.nim_or_inisial}_${Date.now()}_${file.name}`;
+  const {error} = await sb.storage.from('berkas-ta').upload(path, file, {upsert:true});
+  if(error){ showAlert('hadir-alert','Gagal: '+error.message,'danger'); return; }
+
+  await sb.from('bukti_hadir').upsert({
+    user_id:currentUser.id, sesi_seminar_id:sesi,
+    storage_path:path, nama_file:file.name
+  },{onConflict:'user_id,sesi_seminar_id'});
+
+  showAlert('hadir-alert','✅ Bukti hadir berhasil diupload!','success');
+  document.getElementById('hadir-file').value='';
+  loadDaftarHadir();
+}
+
+async function loadDaftarHadir(){
+  const sesi = document.getElementById('hadir-filter-sesi')?.value||'';
+  const el = document.getElementById('daftar-hadir-list');
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+
+  let q = sb.from('bukti_hadir').select('*,users(nama,nim_or_inisial)').order('uploaded_at',{ascending:false});
+  if(sesi) q=q.eq('sesi_seminar_id',sesi);
+  const {data} = await q;
+
+  if(!data||!data.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">Belum ada data.</div>'; return; }
+  el.innerHTML = data.map(h=>`
+    <div class="hadir-row">
+      <span class="hadir-id">${h.sesi_seminar_id}</span>
+      <span style="flex:1;font-weight:500">${h.users?.nama||'—'}</span>
+      <span style="color:var(--muted);font-size:11px">${h.users?.nim_or_inisial||'—'}</span>
+      <span style="color:var(--muted);font-size:11px">${new Date(h.uploaded_at).toLocaleDateString('id-ID')}</span>
+      <button class="btn btn-sm" onclick="downloadBerkas('${h.storage_path}','${h.nama_file}')">⬇</button>
+    </div>`).join('');
+}
+
+// ── TEMPLATE ──────────────────────────────────
+async function loadTemplates(tipe){
+  const el = document.getElementById('template-'+tipe+'-list');
+  const {data} = await sb.from('template_berkas').select('*').eq('jenis',tipe).order('uploaded_at',{ascending:false});
+  if(!data||!data.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;">Belum ada template. Hubungi koordinator.</div>'; return; }
+  el.innerHTML = data.map(t=>`
+    <div class="berkas-item">
+      <div class="berkas-icon">📋</div>
+      <div class="berkas-info"><div class="berkas-name">${t.nama}</div></div>
+      <button class="btn btn-sm" onclick="downloadBerkas('${t.storage_path}','${t.nama}')">⬇ Download</button>
+    </div>`).join('');
+}
+
+// ── JADWAL PUBLIK ─────────────────────────────
+function renderJadwalPublik(){
+  if(!adminDB?.master){ document.getElementById('jadwal-list').innerHTML='<div style="color:var(--muted)">Data tidak tersedia.</div>'; return; }
+  const q=(document.getElementById('jadwal-q')?.value||'').toLowerCase();
+  const tipeFilter=(document.getElementById('jadwal-tipe')?.value||'');
+  const sortMode=(document.getElementById('jadwal-sort')?.value||'asc');
+  let items=[];
+  adminDB.master.forEach(m=>{
+    const nl=m.mhs.map(x=>x.nama).join(' & ');
+    if(q&&!nl.toLowerCase().includes(q)&&!m.mhs.some(mh=>mh.nim.includes(q))) return;
+    const jSm=adminDB.jadwal_seminar?.[m.id]||{};
+    const jSd=adminDB.jadwal_sidang?.[m.id]||{};
+    if((!tipeFilter||tipeFilter==='Seminar')&&jSm.tgl) items.push({id:m.id,tipe:'Seminar',nl,j:jSm});
+    if((!tipeFilter||tipeFilter==='Sidang')&&jSd.tgl) items.push({id:m.id,tipe:'Sidang',nl,j:jSd});
+  });
+  // Sort
+  items.sort((a,b)=>{
+    if(sortMode==='nama') return a.nl.localeCompare(b.nl);
+    const da=a.j.tgl?new Date(a.j.tgl):new Date(0), db=b.j.tgl?new Date(b.j.tgl):new Date(0);
+    return sortMode==='desc'?db-da:da-db;
+  });
+  const html=items.map(x=>jadwalRow(x.id,x.tipe,x.nl,x.j)).join('');
+  document.getElementById('jadwal-list').innerHTML=html||'<div style="color:var(--muted);font-size:13px;padding:10px 0">Tidak ada jadwal ditemukan.</div>';
+}
+
+function jadwalRow(id,tipe,nama,j){
+  const d=j.tgl?new Date(j.tgl):null;
+  const day=d?d.getDate():'—';
+  const month=d?d.toLocaleDateString('id-ID',{month:'short'}):'-';
+  const stCls=j.status==='Done'?'badge-disetujui':j.status==='Fix'?'badge-menunggu':'badge-draft';
+  return `<div class="jadwal-item">
+    <div class="jadwal-date"><div class="jadwal-day">${day}</div><div class="jadwal-month">${month}</div></div>
+    <div class="jadwal-info">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="jadwal-title">${tipe} — ${id}</div>
+        <span class="badge ${stCls}">${j.status||'-'}</span>
+      </div>
+      <div class="jadwal-meta">${nama}</div>
+      <div class="jadwal-meta">${j.jam||''} ${j.ruangan||''}</div>
+    </div>
+  </div>`;
+}
+
+// ── DASHBOARD ─────────────────────────────────
+function renderDashboard(){
+  const mhsData=getMhsData();
+  if(!mhsData) return;
+  const el=document.getElementById('jadwal-saya');
+  const jSm=adminDB?.jadwal_seminar?.[mhsData.id]||{};
+  const jSd=adminDB?.jadwal_sidang?.[mhsData.id]||{};
+  let html='';
+  if(jSm.tgl) html+=jadwalRow(mhsData.id,'Seminar',currentUser.nama,jSm);
+  if(jSd.tgl) html+=jadwalRow(mhsData.id,'Sidang',currentUser.nama,jSd);
+  if(!html) html='<div style="color:var(--muted);font-size:13px;">Jadwal belum tersedia.</div>';
+  el.innerHTML=html;
+}
+
+function getMhsData(){
+  if(!adminDB?.master||!currentUser) return null;
+  return adminDB.master.find(m=>m.mhs.some(mh=>mh.nim===currentUser.nim_or_inisial));
+}
+
+// ── HELPERS ───────────────────────────────────
+function showAlert(id,msg,type){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none',4000);
+}
+function dragOver(e,id){ e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function dragLeave(id){ document.getElementById(id).classList.remove('drag'); }
+function dropFile(e,inputId){ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f){ const inp=document.getElementById(inputId); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; const tid=inputId.replace('-file','-drop-text'); document.getElementById(tid).textContent='✓ '+f.name; } }
+// ── GANTI PASSWORD ────────────────────────
+async function gantiPassword(){
+  const lama=document.getElementById('pass-lama').value;
+  const baru=document.getElementById('pass-baru').value;
+  const konfirm=document.getElementById('pass-konfirm').value;
+  if(!lama||!baru||!konfirm){ showAlert('pass-alert','Semua kolom wajib diisi.','danger'); return; }
+  if(baru!==konfirm){ showAlert('pass-alert','Password baru tidak cocok.','danger'); return; }
+  if(baru.length<6){ showAlert('pass-alert','Password minimal 6 karakter.','danger'); return; }
+
+  // Verifikasi password lama
+  const {data:u}=await sb.from('users').select('password_hash').eq('id',currentUser.id).single();
+  if(!u||u.password_hash!==btoa(lama)){ showAlert('pass-alert','Password lama salah.','danger'); return; }
+
+  await sb.from('users').update({password_hash:btoa(baru)}).eq('id',currentUser.id);
+  showAlert('pass-alert','✅ Password berhasil diubah!','success');
+  ['pass-lama','pass-baru','pass-konfirm'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ── RESET PASSWORD (lupa password) ────────
+async function resetPassword(){
+  const nim=document.getElementById('lupa-nim').value.trim();
+  const p1=document.getElementById('lupa-pass1').value;
+  const p2=document.getElementById('lupa-pass2').value;
+  const al=document.getElementById('lupa-alert');
+  al.style.display='none';
+  if(!nim||!p1||!p2){ al.className='alert alert-danger';al.textContent='Semua kolom wajib diisi.';al.style.display='block'; return; }
+  if(p1!==p2){ al.className='alert alert-danger';al.textContent='Password tidak cocok.';al.style.display='block'; return; }
+  if(p1.length<6){ al.className='alert alert-danger';al.textContent='Password minimal 6 karakter.';al.style.display='block'; return; }
+
+  const {data,error}=await sb.from('users').update({password_hash:btoa(p1)}).eq('nim_or_inisial',nim).eq('role','mahasiswa').select();
+  if(error||!data||!data.length){ al.className='alert alert-danger';al.textContent='NIM tidak ditemukan.';al.style.display='block'; return; }
+  al.className='alert alert-success';al.textContent='✅ Password berhasil direset! Silakan login.';al.style.display='block';
+  setTimeout(()=>document.getElementById('modal-lupa').style.display='none',2000);
+}
+
+</body>
+</html>

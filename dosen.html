@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Dosen — Sistem TA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F6F3;--card:#fff;--border:#E8E6E0;--border2:#d4d1c9;
+  --text:#1a1a1a;--muted:#888;--accent:#2E7D56;--accent2:#246045;
+  --success:#1a6b25;--success-bg:#d4f0d7;--warn:#7a5200;--warn-bg:#fef3d0;
+  --danger:#8a1a1a;--danger-bg:#fde0e0;--info-bg:#dce8fb;--info:#1a4a8a;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:400px;}
+.auth-logo{font-size:28px;margin-bottom:6px;}
+.auth-title{font-size:20px;font-weight:700;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+.app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:#d4f0d7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1a6b25;}
+.tabs{display:flex;gap:2px;background:#F0EEE8;border-radius:10px;padding:3px;}
+.tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);}
+.tab.active{background:var(--card);color:var(--text);}
+.content{padding:20px;max-width:960px;margin:0 auto;width:100%;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-draft{background:#f0eee8;color:#888;}
+.badge-menunggu{background:#fef3d0;color:#7a5200;}
+.badge-disetujui{background:#d4f0d7;color:#1a6b25;}
+.badge-revisi{background:#fde0e0;color:#8a1a1a;}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:#EEEDFE;color:#5a3d9e;}
+
+/* Pendaftaran list */
+.pend-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;}
+.pend-item:hover{border-color:#b0b8cc;}
+.pend-item.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(46,125,86,0.12);}
+.pend-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.pend-nama{font-weight:600;font-size:13px;}
+.pend-meta{font-size:11px;color:var(--muted);}
+
+/* Berkas review */
+.berkas-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.berkas-row:last-child{border-bottom:none;}
+.berkas-icon{width:34px;height:34px;border-radius:8px;background:#f0eee8;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.berkas-name{flex:1;font-size:13px;font-weight:500;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.berkas-jenis{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* KB table */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.03em;}
+td{padding:8px 12px;border-bottom:1px solid #f0eee8;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-bar input,.filter-bar select{padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);outline:none;}
+.filter-bar select{max-width:160px;}
+.filter-bar input{max-width:220px;}
+
+/* Form */
+.form-group{margin-bottom:12px;}
+.form-group label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.03em;}
+input,select,textarea{width:100%;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);outline:none;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:80px;}
+
+/* File upload */
+.file-drop{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all 0.15s;}
+.file-drop:hover{border-color:var(--accent);background:#F0FBF5;}
+.file-drop input{display:none;}
+
+/* Buttons */
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--text);transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:#f0eee8;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent2);}
+.btn-approve{background:#1a6b25;color:#fff;border-color:#1a6b25;}
+.btn-approve:hover{background:#145420;}
+.btn-revisi{background:#8a1a1a;color:#fff;border-color:#8a1a1a;}
+.btn-revisi:hover{background:#6d1414;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;}
+.alert-success{background:var(--success-bg);color:var(--success);}
+.alert-danger{background:var(--danger-bg);color:var(--danger);}
+.alert-warn{background:var(--warn-bg);color:var(--warn);}
+.alert-info{background:var(--info-bg);color:var(--info);}
+.loading{text-align:center;padding:28px;color:var(--muted);}
+.spinner{width:20px;height:20px;border:2px solid #e0ddd6;border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.notif-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e24b4a;margin-left:4px;vertical-align:middle;}
+.empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-wrap" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">👨‍🏫</div>
+    <div class="auth-title">Portal Dosen Pembimbing</div>
+    <div class="auth-sub">Review & approval berkas Tugas Akhir</div>
+    <div id="auth-alert" style="display:none;margin-bottom:14px;"></div>
+    <div class="form-group"><label>Inisial dosen</label><input type="text" id="login-inisial" placeholder="cth: AYS" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">Masuk</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="avatar" id="user-avatar">?</div>
+      <div>
+        <div style="font-weight:600;font-size:13px;" id="user-nama">—</div>
+        <div style="font-size:11px;color:var(--muted);" id="user-inisial">—</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('approval',this)">📋 Approval Berkas <span id="notif-count"></span></button>
+        <button class="tab" onclick="switchTab('nilai',this)">✏️ Input Nilai</button>
+        <button class="tab" onclick="switchTab('bimbingan',this)">📖 Kartu Bimbingan</button>
+      </div>
+      <button class="btn btn-sm" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+
+
+    <!-- KARTU BIMBINGAN -->
+    <div id="tab-bimbingan" style="display:none;">
+      <div class="card">
+        <div class="card-title">Kartu bimbingan mahasiswa bimbingan saya</div>
+        <div class="filter-bar">
+          <input type="text" id="kb-q" placeholder="Cari nama mahasiswa..." oninput="loadKBDosen()">
+        </div>
+        <div id="kb-dosen-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- NILAI -->
+    <div id="tab-nilai" style="display:none;">
+      <div class="card">
+        <div class="card-title">Input Nilai Mahasiswa Bimbingan</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <select id="nilai-filter-mhs" onchange="renderNilaiDosen()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;flex:1;background:var(--card);">
+            <option value="">-- Pilih mahasiswa --</option>
+          </select>
+          <select id="nilai-filter-sesi" onchange="renderNilaiDosen()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--card);">
+            <option value="seminar">Seminar</option>
+            <option value="sidang">Sidang</option>
+            <option value="proses">Proses</option>
+          </select>
+        </div>
+        <div id="nilai-dosen-form" style="display:none;"></div>
+        <div id="nilai-dosen-list">
+          <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Pilih mahasiswa untuk input nilai</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Rekap nilai mahasiswa bimbingan</div>
+        <div id="nilai-rekap-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- APPROVAL -->
+    <div id="tab-approval" style="display:none;">
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;">
+        <div>
+          <div class="card" style="padding:14px;">
+            <div class="card-title" style="margin-bottom:10px;">Pendaftaran masuk <span id="notif-count"></span></div>
+            <div class="filter-bar" style="margin-bottom:10px;">
+              <select id="filter-tipe" onchange="loadPendaftaranList()" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:7px;font-size:12px;">
+                <option value="">Semua tipe</option>
+                <option value="seminar">Seminar</option>
+                <option value="sidang">Sidang</option>
+              </select>
+            </div>
+            <div id="pend-list"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+        <div id="review-detail">
+          <div class="card"><div class="empty-state">← Pilih mahasiswa untuk mereview berkas</div></div>
+        </div>
+      </div>
+    </div>
+
+
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://jfigezwgpjdcstfhawmq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmaWdlendncGpkY3N0Zmhhd21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjA3MzMsImV4cCI6MjA5ODEzNjczM30.ne8vbzqzXScutIkcqgpAJrSMbNjZN0DXmbxVVCaylzk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let adminDB = null;
+let selectedPend = null;
+
+window.onload = async () => {
+  const saved = localStorage.getItem('portal_dosen');
+  if(saved){ currentUser = JSON.parse(saved); showApp(); }
+  loadAdminDB();
+};
+
+function loadAdminDB(){
+  const keys = Object.keys(localStorage).filter(k=>k.startsWith('ta_'));
+  for(const k of keys){
+    try{ const d=JSON.parse(localStorage.getItem(k)); if(d&&d.master){ adminDB=d; break; } }catch(e){}
+  }
+  if(!adminDB){ try{ adminDB=JSON.parse(localStorage.getItem('ta2022_v6')||'null'); }catch(e){} }
+}
+
+async function doLogin(){
+  const inisial = document.getElementById('login-inisial').value.trim().toUpperCase();
+  const pass = document.getElementById('login-pass').value;
+  if(!inisial||!pass){ showAuthAlert('Inisial dan password wajib diisi.','danger'); return; }
+  showAuthAlert('Memeriksa...','info');
+  const {data,error} = await sb.from('users').select('*').eq('nim_or_inisial',inisial).eq('role','dosen').single();
+  if(error||!data){ showAuthAlert('Inisial tidak ditemukan.','danger'); return; }
+  if(data.password_hash !== btoa(pass)){ showAuthAlert('Password salah.','danger'); return; }
+  currentUser = data;
+  localStorage.setItem('portal_dosen', JSON.stringify(data));
+  showApp();
+}
+
+function doLogout(){
+  localStorage.removeItem('portal_dosen');
+  currentUser=null;
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+function showAuthAlert(msg,type){
+  const el=document.getElementById('auth-alert');
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+}
+
+async function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-avatar').textContent=currentUser.nim_or_inisial.slice(0,2);
+  document.getElementById('user-nama').textContent=currentUser.nama;
+  document.getElementById('user-inisial').textContent=currentUser.nim_or_inisial;
+  await loadPendaftaranList();
+  loadNilaiMhsOptions();
+}
+
+function switchTab(tab,el){
+  document.querySelectorAll('[id^="tab-"]').forEach(x=>x.style.display='none');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display='block';
+  el.classList.add('active');
+  if(tab==='bimbingan') loadKBDosen();
+  if(tab==='nilai'){ loadNilaiMhsOptions(); renderRekap(); }
+  if(tab==='approval') loadPendaftaranList();
+}
+
+// ── PENDAFTARAN LIST ──────────────────────────
+async function loadPendaftaranList(){
+  const tipe = document.getElementById('filter-tipe').value;
+  const el = document.getElementById('pend-list');
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+
+  // Mahasiswa bimbingan dosen ini
+  const mbList = getMhsBimbingan();
+
+  let allPend = [];
+  const tipes = tipe?[tipe]:['seminar','sidang'];
+  for(const t of tipes){
+    const tbl = t==='seminar'?'pendaftaran_seminar':'pendaftaran_sidang';
+    const {data} = await sb.from(tbl).select('*,users(nama,nim_or_inisial)').in('status',['menunggu','disetujui','revisi']).order('submitted_at',{ascending:false});
+    if(data) allPend.push(...data.map(d=>({...d,_tipe:t})));
+  }
+
+  // Filter hanya bimbingan dosen ini
+  const filtered = allPend.filter(p=>mbList.includes(p.users?.nim_or_inisial));
+
+  // Notifikasi count
+  const menunggu = filtered.filter(p=>p.status==='menunggu').length;
+  document.getElementById('notif-count').innerHTML = menunggu>0?`<span class="notif-dot"></span>`:'';
+
+  if(!filtered.length){ el.innerHTML='<div class="empty-state">Tidak ada pendaftaran untuk direview.</div>'; return; }
+  el.innerHTML = filtered.map(p=>`
+    <div class="pend-item" onclick="selectPend(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+      <div class="pend-header">
+        <span class="pend-nama">${p.users?.nama||'—'}</span>
+        <span class="badge badge-${p.status}">${{menunggu:'Menunggu',disetujui:'Disetujui',revisi:'Revisi'}[p.status]||p.status}</span>
+      </div>
+      <div class="pend-meta">${p.users?.nim_or_inisial} · <span class="tag">${p._tipe.toUpperCase()}</span></div>
+      <div class="pend-meta">${p.submitted_at?new Date(p.submitted_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'-'}</div>
+    </div>`).join('');
+}
+
+async function selectPend(pend){
+  selectedPend = pend;
+  document.querySelectorAll('.pend-item').forEach(x=>x.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  const el = document.getElementById('review-detail');
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+
+  // Load berkas
+  const {data:berkas} = await sb.from('berkas').select('*').eq('pendaftaran_id',pend.id).order('uploaded_at');
+
+  const labelMap={checklist_proposal:'Checklist Proposal',bahan_presentasi:'Bahan Presentasi',kartu_bimbingan:'Kartu Bimbingan',bukti_hadir_seminar:'Bukti Hadir Seminar',transkrip_sementara:'Transkrip Sementara',artikel_ilmiah:'Artikel Ilmiah',bukti_plagiarisme:'Bukti Cek Plagiarisme',draf_skripsi:'Draf Skripsi'};
+
+  const required = pend._tipe==='seminar'?
+    ['checklist_proposal','bahan_presentasi','kartu_bimbingan']:
+    ['bukti_hadir_seminar','kartu_bimbingan','transkrip_sementara','bahan_presentasi','artikel_ilmiah','bukti_plagiarisme','draf_skripsi'];
+
+  const uploaded = berkas?.map(b=>b.jenis_berkas)||[];
+  const checkRows = required.map(r=>{
+    const found=berkas?.find(b=>b.jenis_berkas===r);
+    return `<div class="berkas-row">
+      <div class="berkas-icon">${found?'✅':'⬜'}</div>
+      <div style="flex:1"><div class="berkas-name">${labelMap[r]||r}</div>
+        ${found?`<div class="berkas-jenis">${found.nama_file}</div>`:'<div class="berkas-jenis" style="color:#e24b4a">Belum diupload</div>'}
+      </div>
+      ${found?`<button class="btn btn-sm" onclick="downloadBerkas('${found.storage_path}','${found.nama_file}')">⬇ Lihat</button>`:''}
+    </div>`;
+  }).join('');
+
+  const allUploaded = required.every(r=>uploaded.includes(r));
+
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">
+        <span>${pend._tipe==='seminar'?'Seminar':'Sidang'} — ${pend.users?.nama}</span>
+        <span class="badge badge-${pend.status}">${{menunggu:'Menunggu review',disetujui:'Disetujui',revisi:'Perlu revisi'}[pend.status]||pend.status}</span>
+      </div>
+      <div id="review-alert"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">NIM: ${pend.users?.nim_or_inisial} · Diajukan: ${pend.submitted_at?new Date(pend.submitted_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'—'}</div>
+
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);margin-bottom:8px;">Checklist berkas</div>
+      ${checkRows}
+
+      ${!allUploaded?`<div class="alert alert-warn" style="margin-top:12px;">⚠ Masih ada berkas yang belum diupload mahasiswa.</div>`:''}
+
+      <div style="padding-top:16px;border-top:1px solid var(--border);margin-top:14px;">
+        <div class="form-group">
+          <label>Catatan untuk mahasiswa</label>
+          <textarea id="catatan-inp" placeholder="Tulis catatan atau alasan revisi...">${pend.catatan_dosen||''}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-approve" onclick="doApproval('disetujui')">✅ Setujui</button>
+          <button class="btn btn-revisi" onclick="doApproval('revisi')">↩ Minta Revisi</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doApproval(status){
+  if(!selectedPend) return;
+  const catatan = document.getElementById('catatan-inp')?.value||'';
+  if(status==='revisi'&&!catatan.trim()){ showAlert('review-alert','Tulis catatan revisi untuk mahasiswa.','warn'); return; }
+  const tbl = selectedPend._tipe==='seminar'?'pendaftaran_seminar':'pendaftaran_sidang';
+  await sb.from(tbl).update({status,catatan_dosen:catatan,updated_at:new Date().toISOString()}).eq('id',selectedPend.id);
+  showAlert('review-alert',status==='disetujui'?'✅ Pendaftaran disetujui!':'↩ Revisi diminta. Mahasiswa akan diberitahu.', status==='disetujui'?'success':'warn');
+  loadPendaftaranList();
+}
+
+// ── KARTU BIMBINGAN ───────────────────────────
+async function loadKBDosen(){
+  const q=(document.getElementById('kb-q')?.value||'').toLowerCase();
+  const el=document.getElementById('kb-dosen-list');
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const {data} = await sb.from('kartu_bimbingan').select('*,users!kartu_bimbingan_user_id_fkey(nama,nim_or_inisial)').eq('dosen_id',currentUser.id).order('tanggal',{ascending:false});
+  if(!data||!data.length){ el.innerHTML='<div class="empty-state">Belum ada catatan bimbingan.</div>'; return; }
+  const filtered=data.filter(k=>!q||k.users?.nama?.toLowerCase().includes(q)||k.users?.nim_or_inisial?.includes(q));
+  if(!filtered.length){ el.innerHTML='<div class="empty-state">Tidak ada hasil.</div>'; return; }
+  el.innerHTML=`<table><thead><tr><th>Tanggal</th><th>Mahasiswa</th><th>Topik</th><th>Catatan</th></tr></thead><tbody>`+
+    filtered.map(k=>`<tr>
+      <td style="white-space:nowrap">${new Date(k.tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td><div style="font-weight:500">${k.users?.nama||'—'}</div><div style="font-size:11px;color:var(--muted)">${k.users?.nim_or_inisial||''}</div></td>
+      <td>${k.topik}</td>
+      <td style="font-size:12px;color:#555">${k.catatan||'—'}</td>
+    </tr>`).join('')+'</tbody></table>';
+}
+
+// ── NILAI DOSEN ───────────────────────────────
+function loadNilaiDosen(){
+  if(!adminDB){ document.getElementById('nilai-dosen-list').innerHTML='<div class="empty-state">Data nilai tidak tersedia.</div>'; return; }
+  const mbList = getMhsBimbingan();
+  const el = document.getElementById('nilai-dosen-list');
+  const mhs = adminDB.master?.filter(m=>m.mhs.some(mh=>mbList.includes(mh.nim)))||[];
+  if(!mhs.length){ el.innerHTML='<div class="empty-state">Tidak ada mahasiswa bimbingan.</div>'; return; }
+  el.innerHTML=`<table><thead><tr><th>Nama</th><th>NIM</th><th>Seminar</th><th>Sidang</th><th>Final</th><th>Grade</th></tr></thead><tbody>`+
+    mhs.flatMap(m=>m.mhs.map((mh,mi)=>{
+      const nilai=adminDB.nilai?.[m.id];
+      const sm=calcSS(nilai?.seminar,adminDB.bobot?.seminar||{},'seminar',mi);
+      const sd=calcSS(nilai?.sidang,adminDB.bobot?.sidang||{},'sidang',mi);
+      const bf=adminDB.bobot?.bobot_final||{seminar:0.3,sidang:0.3,proses:0.4};
+      let num=0,den=0;
+      if(sm!==null){num+=bf.seminar*sm;den+=bf.seminar;}
+      if(sd!==null){num+=bf.sidang*sd;den+=bf.sidang;}
+      const final=den>0?parseFloat((num/den).toFixed(2)):null;
+      const grade=getGrade(final);
+      return `<tr>
+        <td style="font-weight:500">${mh.nama}</td>
+        <td style="font-size:11px;color:var(--muted)">${mh.nim}</td>
+        <td>${sm!==null?sm.toFixed(2):'—'}</td>
+        <td>${sd!==null?sd.toFixed(2):'—'}</td>
+        <td><strong>${final!==null?final.toFixed(2):'—'}</strong></td>
+        <td>${grade?`<span class="badge badge-${grade.toLowerCase()==='a'?'disetujui':grade.toLowerCase()==='e'?'revisi':'menunggu'}">${grade}</span>`:'—'}</td>
+      </tr>`;
+    })).join('')+'</tbody></table>';
+}
+
+// ── TEMPLATE ──────────────────────────────────
+async function uploadTemplate(){
+  const nama=document.getElementById('tmpl-nama').value.trim();
+  const jenis=document.getElementById('tmpl-jenis').value;
+  const file=document.getElementById('tmpl-file').files[0];
+  if(!nama||!file){ showAlert('template-alert','Nama dan file wajib diisi.','danger'); return; }
+  showAlert('template-alert','Mengupload...','info');
+  const path=`templates/${jenis}/${Date.now()}_${file.name}`;
+  const {error}=await sb.storage.from('berkas-ta').upload(path,file,{upsert:true});
+  if(error){ showAlert('template-alert','Gagal: '+error.message,'danger'); return; }
+  await sb.from('template_berkas').insert({nama,jenis,storage_path:path});
+  showAlert('template-alert','✅ Template berhasil diupload!','success');
+  document.getElementById('tmpl-nama').value='';
+  document.getElementById('tmpl-file').value='';
+  document.getElementById('tmpl-drop-text').textContent='Klik untuk memilih file (PDF/DOCX/XLSX)';
+  loadTemplateList();
+}
+
+async function loadTemplateList(){
+  const el=document.getElementById('tmpl-list');
+  const {data}=await sb.from('template_berkas').select('*').order('uploaded_at',{ascending:false});
+  if(!data||!data.length){ el.innerHTML='<div class="empty-state">Belum ada template.</div>'; return; }
+  el.innerHTML=data.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:20px;">📋</div>
+      <div style="flex:1"><div style="font-weight:500;font-size:13px">${t.nama}</div><div style="font-size:11px;color:var(--muted)"><span class="tag">${t.jenis}</span> · ${new Date(t.uploaded_at).toLocaleDateString('id-ID')}</div></div>
+      <button class="btn btn-sm" onclick="downloadBerkas('${t.storage_path}','${t.nama}')">⬇</button>
+      <button class="btn btn-sm" style="color:#c0392b" onclick="hapusTemplate('${t.id}')">Hapus</button>
+    </div>`).join('');
+}
+
+async function hapusTemplate(id){
+  if(!confirm('Hapus template ini?')) return;
+  await sb.from('template_berkas').delete().eq('id',id);
+  loadTemplateList();
+}
+
+// ── HELPERS ───────────────────────────────────
+function getMhsBimbingan(){
+  if(!adminDB?.master||!currentUser) return [];
+  return adminDB.master.filter(m=>m.ps1===currentUser.nim_or_inisial||m.ps2===currentUser.nim_or_inisial).flatMap(m=>m.mhs.map(mh=>mh.nim));
+}
+
+function calcSS(rows,bobot,tipe,mhsIdx){
+  if(!rows||!rows.length) return null;
+  const r2=(mhsIdx!==undefined)?rows.filter(r=>r.mhsIdx===mhsIdx||r.mhsIdx===undefined):rows;
+  let pb1=null,pb2=null,pg=null;
+  r2.forEach(r=>{if(r.peran==='ps1')pb1=r;else if(r.peran==='ps2')pb2=r;else pg=r;});
+  const sr=r=>{if(!r)return null;if(![r.A1,r.A2,r.A3,r.A4,r.A5].some(x=>x>0))return null;return (bobot.A1||0)*(r.A1||0)+(bobot.A2||0)*(r.A2||0)+(bobot.A3||0)*(r.A3||0)+(bobot.A4||0)*(r.A4||0)+(bobot.A5||0)*(r.A5||0);};
+  const s1=sr(pb1),s2=sr(pb2),sp=sr(pg);
+  if(s1===null&&s2===null) return null;
+  const avg=(s1!==null&&s2!==null)?(s1+s2)/2:(s1!==null?s1:s2);
+  const f={pembimbing:0.60,penguji:0.40};
+  return parseFloat((f.pembimbing*avg+(sp!==null?f.penguji*sp:f.penguji*avg)).toFixed(2));
+}
+
+function getGrade(sc){
+  if(sc===null||sc===undefined) return null;
+  const g=adminDB?.grade||[];
+  const sorted=[...g].sort((a,b)=>b.min-a.min);
+  for(const gr of sorted) if(sc>=gr.min) return gr.grade;
+  return 'E';
+}
+
+async function downloadBerkas(path,nama){
+  const {data}=await sb.storage.from('berkas-ta').createSignedUrl(path,60);
+  if(data?.signedUrl){ const a=document.createElement('a'); a.href=data.signedUrl; a.download=nama; a.click(); }
+}
+
+function showAlert(id,msg,type){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none',4000);
+}
+
+// ── INPUT NILAI ────────────────────────────
+function loadNilaiMhsOptions(){
+  if(!adminDB) return;
+  const mbList=getMhsBimbingan();
+  const sel=document.getElementById('nilai-filter-mhs');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">-- Pilih mahasiswa --</option>';
+  adminDB.master?.filter(m=>m.mhs.some(mh=>mbList.includes(mh.nim))).forEach(m=>{
+    m.mhs.forEach((mh,mi)=>{
+      const o=document.createElement('option');
+      o.value=m.id+'|'+mi;
+      o.textContent=mh.nama+' ('+mh.nim+')';
+      sel.appendChild(o);
+    });
+  });
+  if(prev) sel.value=prev;
+  renderNilaiDosen();
+  renderRekap();
+}
+
+function renderNilaiDosen(){
+  const val=document.getElementById('nilai-filter-mhs')?.value||'';
+  const sesi=document.getElementById('nilai-filter-sesi')?.value||'seminar';
+  const formEl=document.getElementById('nilai-dosen-form');
+  const listEl=document.getElementById('nilai-dosen-list');
+  if(!val||!adminDB){
+    if(formEl) formEl.style.display='none';
+    if(listEl) listEl.innerHTML='<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Pilih mahasiswa untuk input nilai</div>';
+    return;
+  }
+  const [sesId, miStr]=val.split('|');
+  const mi=parseInt(miStr);
+  const m=adminDB.master?.find(x=>x.id===sesId);
+  if(!m){ if(listEl) listEl.innerHTML=''; return; }
+  if(listEl) listEl.innerHTML='';
+  if(formEl) formEl.style.display='block';
+
+  const mh=m.mhs[mi];
+  const dosenInisial=currentUser.nim_or_inisial;
+  const isProses=sesi==='proses';
+  const bobot=sesi==='sidang'?adminDB.bobot?.sidang:adminDB.bobot?.seminar;
+  const bPr=adminDB.bobot?.proses||{B1:0.25,B2:0.40,B3:0.35};
+  const keys=isProses?['B1','B2','B3']:['A1','A2','A3','A4','A5'];
+  const labels=isProses?
+    {B1:'Aktivitas',B2:'Kemandirian',B3:'Usaha/Ketekunan'}:
+    {A1:'Latar belakang',A2:'Metode',A3:'Tata bahasa',A4:'Presentasi',A5:'Menjawab'};
+
+  // Tentukan peran dosen ini (ps1/ps2/penguji)
+  let peran=null;
+  if(m.ps1===dosenInisial) peran='ps1';
+  else if(m.ps2===dosenInisial) peran='ps2';
+  else if(m.penguji===dosenInisial&&!isProses) peran='penguji';
+  if(!peran){ formEl.innerHTML=`<div style="color:#c0392b;font-size:13px;">Anda bukan pembimbing/penguji mahasiswa ini untuk sesi ${sesi}.</div>`; return; }
+
+  // Baca nilai yang sudah ada
+  const existing=(adminDB.nilai?.[sesId]?.[sesi]||[]).find(r=>r.mhsIdx===mi&&r.peran===peran)||{};
+
+  const peranLabel=peran==='ps1'?'Pembimbing 1':peran==='ps2'?'Pembimbing 2':'Penguji';
+  const hint=isProses?'B1=Aktivitas · B2=Kemandirian · B3=Usaha/Ketekunan':'A1=Latar belakang · A2=Metode · A3=Tata bahasa · A4=Presentasi · A5=Menjawab pertanyaan';
+  const gridCols=isProses?3:5;
+
+  formEl.innerHTML=`
+    <div style="background:#F7F6F3;border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:4px;">👤 ${mh.nama} <span style="font-size:11px;color:#888;font-weight:400">${mh.nim}</span></div>
+      <div style="font-size:11px;color:#888">Peran: ${peranLabel} · Sesi: ${sesi.toUpperCase()}</div>
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:10px;">${hint}</div>
+    <div style="display:grid;grid-template-columns:repeat(${gridCols},1fr);gap:8px;margin-bottom:14px;">
+      ${keys.map(k=>`<div><div style="font-size:10px;font-weight:600;color:#888;margin-bottom:4px;">${k} — ${labels[k]||''}<br>${bobot?Math.round((bobot[k]||bPr[k]||0)*100)+'%':''}</div><input type="number" min="0" max="100" id="dosen-inp-${k}" value="${existing[k]!==undefined?existing[k]:''}" style="text-align:center;padding:7px 4px;"></div>`).join('')}
+    </div>
+    <div id="nilai-save-alert" style="display:none;margin-bottom:8px;"></div>
+    <button class="btn btn-approve" onclick="saveNilaiDosen('${sesId}',${mi},'${peran}','${sesi}')">💾 Simpan Nilai</button>`;
+}
+
+async function saveNilaiDosen(sesId,mi,peran,sesi){
+  if(!adminDB){ alert('Data tidak tersedia.'); return; }
+  const isProses=sesi==='proses';
+  const keys=isProses?['B1','B2','B3']:['A1','A2','A3','A4','A5'];
+  let row={mhsIdx:mi,peran},has=false;
+  keys.forEach(k=>{
+    const el=document.getElementById('dosen-inp-'+k);
+    if(el&&el.value!==''){row[k]=parseFloat(el.value);has=true;}
+  });
+  if(!has){ showNilaiAlert('Isi minimal satu nilai.','danger'); return; }
+
+  if(!adminDB.nilai) adminDB.nilai={};
+  if(!adminDB.nilai[sesId]) adminDB.nilai[sesId]={};
+  if(!adminDB.nilai[sesId][sesi]) adminDB.nilai[sesId][sesi]=[];
+  adminDB.nilai[sesId][sesi]=adminDB.nilai[sesId][sesi].filter(r=>!(r.mhsIdx===mi&&r.peran===peran));
+  adminDB.nilai[sesId][sesi].push(row);
+
+  // Simpan ke localStorage (sync dengan admin dashboard)
+  const keys2=Object.keys(localStorage).filter(k=>k.startsWith('ta_'));
+  for(const k of keys2){
+    try{
+      const d=JSON.parse(localStorage.getItem(k));
+      if(d&&d.master){ d.nilai=adminDB.nilai; localStorage.setItem(k,JSON.stringify(d)); break; }
+    }catch(e){}
+  }
+  showNilaiAlert('✅ Nilai disimpan!','success');
+  renderRekap();
+}
+
+function showNilaiAlert(msg,type){
+  const el=document.getElementById('nilai-save-alert');
+  if(!el) return;
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none',3000);
+}
+
+function renderRekap(){
+  const el=document.getElementById('nilai-rekap-list');
+  if(!el||!adminDB) return;
+  const mbList=getMhsBimbingan();
+  const mhs=adminDB.master?.filter(m=>m.mhs.some(mh=>mbList.includes(mh.nim)))||[];
+  if(!mhs.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;">Tidak ada mahasiswa bimbingan.</div>'; return; }
+  el.innerHTML=`<table><thead><tr><th>Nama</th><th>NIM</th><th>Seminar</th><th>Sidang</th><th>Final</th><th>Grade</th></tr></thead><tbody>`+
+    mhs.flatMap(m=>m.mhs.map((mh,mi)=>{
+      const nilai=adminDB.nilai?.[m.id];
+      const sm=calcSS(nilai?.seminar,adminDB.bobot?.seminar||{},'seminar',mi);
+      const sd=calcSS(nilai?.sidang,adminDB.bobot?.sidang||{},'sidang',mi);
+      const bf=adminDB.bobot?.bobot_final||{seminar:0.3,sidang:0.3,proses:0.4};
+      let num=0,den=0;
+      if(sm!==null){num+=bf.seminar*sm;den+=bf.seminar;}
+      if(sd!==null){num+=bf.sidang*sd;den+=bf.sidang;}
+      const final=den>0?parseFloat((num/den).toFixed(2)):null;
+      const grade=getGrade(final);
+      return `<tr>
+        <td style="font-weight:500">${mh.nama}</td>
+        <td style="font-size:11px;color:var(--muted)">${mh.nim}</td>
+        <td>${sm!==null?sm.toFixed(2):'—'}</td>
+        <td>${sd!==null?sd.toFixed(2):'—'}</td>
+        <td><strong>${final!==null?final.toFixed(2):'—'}</strong></td>
+        <td>${grade||'—'}</td>
+      </tr>`;
+    })).join('')+'</tbody></table>';
+}
+</script>
+</body>
+</html>
