@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistem Penilaian TA 2022</title>
+<title>Sistem Penilaian TA Business Mathematics</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -295,8 +295,14 @@ textarea{resize:vertical;min-height:70px;}
       <!-- ═══════════════ PENGAJUAN DOSEN ═══════════════ -->
       <div id="page-pengajuan" class="page">
 
+        <!-- Tab eligible + kuota -->
+        <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="peng-tabs">
+          <button class="tab-pill active" onclick="switchPengTab('kuota',this)">Kuota & Beban</button>
+          <button class="tab-pill" onclick="switchPengTab('eligible',this)">Dosen Eligible</button>
+        </div>
+
         <!-- Summary kuota dosen -->
-        <div class="card">
+        <div id="peng-tab-kuota" class="card">
           <div class="card-title">
             <span>Kuota & Beban Dosen</span>
             <button class="btn btn-sm" onclick="loadKuotaDosen()">🔄 Refresh</button>
@@ -313,6 +319,30 @@ textarea{resize:vertical;min-height:70px;}
                 <th style="text-align:center">Sisa</th>
               </tr></thead>
               <tbody id="kuota-tbody"><tr><td colspan="5" style="text-align:center;color:#888;padding:16px;">Klik Refresh untuk memuat</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Eligible dosen -->
+        <div id="peng-tab-eligible" class="card" style="display:none;">
+          <div class="card-title">
+            <span>Dosen Eligible per Angkatan</span>
+            <button class="btn btn-sm btn-primary" onclick="saveEligible()">💾 Simpan</button>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:12px;">
+            Centang dosen yang boleh dipilih sebagai PS1 atau PS2 oleh mahasiswa.
+            Mahasiswa akan melihat dosen yang dicentang di bagian atas dropdown.
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Inisial</th><th>Nama Dosen</th>
+                <th style="text-align:center">Eligible PS1</th>
+                <th style="text-align:center">Eligible PS2</th>
+              </tr></thead>
+              <tbody id="eligible-tbody">
+                <tr><td colspan="4" style="text-align:center;color:#888;padding:16px">Klik "Refresh" di tab Kuota untuk memuat data dosen.</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -1607,20 +1637,42 @@ function openAssign(pengId){
   const p=_allPengajuan.find(x=>x.id===pengId); if(!p) return;
   document.getElementById('assign-peng-id').value=pengId;
   document.getElementById('modal-assign-title').textContent='Assign Dosen — '+(p.users?.nama||'?');
+  const p1pref = p.ps1_pilihan ? `<span class="tag">${p.ps1_pilihan}</span> ${(DB.dosen?.[p.ps1_pilihan]||p.ps1_pilihan).split(',')[0]}` : '—';
+  const p1alt  = p.ps1_alt_pilihan ? `<span class="tag">${p.ps1_alt_pilihan}</span> ${(DB.dosen?.[p.ps1_alt_pilihan]||p.ps1_alt_pilihan).split(',')[0]}` : '—';
+  const p2pref = p.ps2_pilihan ? `<span class="tag">${p.ps2_pilihan}</span> ${(DB.dosen?.[p.ps2_pilihan]||p.ps2_pilihan).split(',')[0]}` : 'Tidak ada';
+  const partnerInfo = p.nama_kelompok ? `<div style="font-size:12px;color:#555;margin-top:2px;">Partner kelompok: ${p.nama_kelompok} (${p.nim_kelompok})</div>` : '';
   document.getElementById('assign-mhs-info').innerHTML=`
     <div style="font-size:13px;font-weight:600">${p.users?.nama||'—'} <span style="font-size:11px;font-weight:400;color:#888">${p.users?.nim_or_inisial||''}</span></div>
-    <div style="font-size:12px;color:#555;margin-top:4px;">Topik: ${p.judul_sementara||'—'}</div>
-    <div style="font-size:12px;color:#555;">Bidang: ${p.bidang_riset||'—'}</div>`;
-  const fillSel=(sel,selected='',empty=false)=>{
+    ${partnerInfo}
+    <div style="font-size:12px;color:#555;margin-top:4px;">Topik: ${p.judul_sementara||'—'} · Bidang: ${p.bidang_riset||'—'}</div>
+    <div style="margin-top:8px;padding:8px;background:#F7F6F3;border-radius:6px;font-size:12px;line-height:1.8">
+      <strong>Preferensi mahasiswa:</strong><br>
+      PS1: ${p1pref}<br>PS1 Alt: ${p1alt}<br>PS2: ${p2pref}
+    </div>`;
+  const getEligible=async(tipe)=>{
+    try{
+      const {data}=await getSB().from('dosen_eligible').select('inisial').eq('angkatan',currentAngkatan).eq('eligible_'+tipe,true);
+      return (data||[]).map(d=>d.inisial);
+    }catch(e){ return []; }
+  };
+  const [eligPs1,eligPs2]=await Promise.all([getEligible('ps1'),getEligible('ps2')]);
+  const fillSel=(sel,selected='',empty=false,eligList=[])=>{
     let h=empty?'<option value="">— Tidak ada —</option>':'';
-    Object.entries(DB.dosen||{}).sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,v])=>{
-      const beban=_allPengajuan.filter(x=>x.ps1_inisial===k||x.ps2_inisial===k).length;
-      h+=`<option value="${k}" ${k===selected?'selected':''}>${k} — ${v.split(',')[0]} (beban:${beban})</option>`;
-    });
+    const all=Object.entries(DB.dosen||{}).sort((a,b)=>a[1].localeCompare(b[1]));
+    const bebanMap={};
+    _allPengajuan.forEach(x=>{ if(x.ps1_inisial) bebanMap[x.ps1_inisial]=(bebanMap[x.ps1_inisial]||0)+1; if(x.ps2_inisial) bebanMap[x.ps2_inisial]=(bebanMap[x.ps2_inisial]||0)+1; });
+    if(eligList.length){
+      const ok=all.filter(([k])=>eligList.includes(k));
+      const rest=all.filter(([k])=>!eligList.includes(k));
+      if(ok.length){ h+=`<optgroup label="✅ Eligible">`; ok.forEach(([k,v])=>{ h+=`<option value="${k}" ${k===selected?'selected':''}>${k} — ${v.split(',')[0]} (beban:${bebanMap[k]||0})</option>`; }); h+=`</optgroup>`; }
+      if(rest.length){ h+=`<optgroup label="Lainnya">`; rest.forEach(([k,v])=>{ h+=`<option value="${k}" ${k===selected?'selected':''}>${k} — ${v.split(',')[0]} (beban:${bebanMap[k]||0})</option>`; }); h+=`</optgroup>`; }
+    } else {
+      all.forEach(([k,v])=>{ h+=`<option value="${k}" ${k===selected?'selected':''}>${k} — ${v.split(',')[0]} (beban:${bebanMap[k]||0})</option>`; });
+    }
     sel.innerHTML=h;
   };
-  fillSel(document.getElementById('assign-ps1'),p.ps1_inisial||'');
-  fillSel(document.getElementById('assign-ps2'),p.ps2_inisial||'',true);
+  fillSel(document.getElementById('assign-ps1'),p.ps1_inisial||'',false,eligPs1);
+  fillSel(document.getElementById('assign-ps2'),p.ps2_inisial||'',true,eligPs2);
   document.getElementById('assign-catatan').value=p.catatan_admin||'';
   openModal('modal-assign');
 }
@@ -1690,6 +1742,52 @@ async function loadKuotaDosen(){
 async function saveKuota(inisial,val){
   const sb=getSB(); if(!sb) return;
   await sb.from('kuota_dosen').upsert({inisial,angkatan:currentAngkatan,kuota_max:parseInt(val)||6},{onConflict:'inisial,angkatan'});
+}
+
+function switchPengTab(tab, el){
+  document.querySelectorAll('#peng-tabs .tab-pill').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('peng-tab-kuota').style.display   = tab==='kuota'?'block':'none';
+  document.getElementById('peng-tab-eligible').style.display= tab==='eligible'?'block':'none';
+  if(tab==='eligible') renderEligibleTable();
+}
+
+let _eligibleMap = {};
+
+async function renderEligibleTable(){
+  const sb=getSB(); if(!sb) return;
+  const tbody=document.getElementById('eligible-tbody'); if(!tbody) return;
+  try{
+    const {data}=await sb.from('dosen_eligible').select('*').eq('angkatan',currentAngkatan);
+    _eligibleMap={};
+    (data||[]).forEach(d=>{ _eligibleMap[d.inisial]={ps1:d.eligible_ps1,ps2:d.eligible_ps2}; });
+    tbody.innerHTML=Object.entries(DB.dosen||{}).sort((a,b)=>a[1].localeCompare(b[1])).map(([ini,nama])=>{
+      const elig=_eligibleMap[ini]||{ps1:false,ps2:false};
+      return `<tr>
+        <td><span class="tag">${ini}</span></td>
+        <td>${nama.split(',')[0]}</td>
+        <td style="text-align:center">
+          <input type="checkbox" id="el-ps1-${ini}" ${elig.ps1?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+        </td>
+        <td style="text-align:center">
+          <input type="checkbox" id="el-ps2-${ini}" ${elig.ps2?'checked':''} style="width:16px;height:16px;cursor:pointer;">
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){ tbody.innerHTML=`<tr><td colspan="4" style="color:#888;padding:12px">${e.message}</td></tr>`; }
+}
+
+async function saveEligible(){
+  const sb=getSB(); if(!sb){ alert('Supabase belum terhubung.'); return; }
+  const rows=[];
+  Object.keys(DB.dosen||{}).forEach(ini=>{
+    const ps1=document.getElementById('el-ps1-'+ini)?.checked||false;
+    const ps2=document.getElementById('el-ps2-'+ini)?.checked||false;
+    rows.push({inisial:ini,angkatan:currentAngkatan,eligible_ps1:ps1,eligible_ps2:ps2,updated_at:new Date().toISOString()});
+  });
+  const {error}=await sb.from('dosen_eligible').upsert(rows,{onConflict:'inisial,angkatan'});
+  if(error){ alert('Gagal: '+error.message); return; }
+  showPengAlert('✅ Daftar eligible dosen berhasil disimpan!','success');
 }
 
 function showPengAlert(msg,type){
