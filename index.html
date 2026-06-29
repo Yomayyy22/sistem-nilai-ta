@@ -135,6 +135,7 @@ textarea{resize:vertical;min-height:70px;}
       <div class="sb-group">Sistem</div>
       <button class="nav-item" onclick="showPage('users',this)">👤 Kelola Akun</button>
       <button class="nav-item" onclick="showPage('template',this)">📋 Template Berkas</button>
+      <button class="nav-item" onclick="showPage('pengajuan',this)">🎓 Pengajuan Dosen</button>
     </nav>
   </div>
   <div class="main">
@@ -288,6 +289,91 @@ textarea{resize:vertical;min-height:70px;}
             <thead><tr><th>#</th><th>ID / Jenis</th><th>Nama</th><th>NIM</th><th>Seminar</th><th>Sidang</th><th>Proses</th><th>Final</th><th>Grade</th></tr></thead>
             <tbody id="rekap-tbody"></tbody>
           </table></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ PENGAJUAN DOSEN ═══════════════ -->
+      <div id="page-pengajuan" class="page">
+
+        <!-- Summary kuota dosen -->
+        <div class="card">
+          <div class="card-title">
+            <span>Kuota & Beban Dosen</span>
+            <button class="btn btn-sm" onclick="loadKuotaDosen()">🔄 Refresh</button>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:10px;">
+            Klik angka kuota untuk mengubahnya langsung.
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Inisial</th><th>Nama Dosen</th>
+                <th style="text-align:center">Sudah assign</th>
+                <th style="text-align:center">Kuota maks</th>
+                <th style="text-align:center">Sisa</th>
+              </tr></thead>
+              <tbody id="kuota-tbody"><tr><td colspan="5" style="text-align:center;color:#888;padding:16px;">Klik Refresh untuk memuat</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Daftar pengajuan mahasiswa -->
+        <div class="card">
+          <div class="card-title">
+            <span>Daftar Pengajuan Mahasiswa</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" onclick="umumkanSemuaFinal()" style="background:#1a6b25;color:#fff;border-color:#1a6b25;">📢 Umumkan Semua Final</button>
+              <button class="btn btn-sm" onclick="loadPengajuanAdmin()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="search-bar">
+            <input type="text" id="peng-q" placeholder="Cari nama, NIM, topik..." oninput="filterPengajuan()">
+            <select id="peng-filter-status" onchange="filterPengajuan()">
+              <option value="">Semua status</option>
+              <option value="draft">Draft</option>
+              <option value="menunggu">Menunggu assign</option>
+              <option value="disetujui">Sudah di-assign</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+          <div id="pengajuan-alert"></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Mahasiswa</th><th>Topik</th><th>Bidang</th>
+                <th>Status</th><th>PS1</th><th>PS2</th><th>Aksi</th>
+              </tr></thead>
+              <tbody id="pengajuan-tbody"><tr><td colspan="8" style="text-align:center;color:#888;padding:16px;">Klik Refresh untuk memuat</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal assign dosen -->
+      <div class="modal-overlay hidden" id="modal-assign">
+        <div class="modal">
+          <button class="modal-close" onclick="closeModal('modal-assign')">×</button>
+          <div class="modal-title" id="modal-assign-title">Assign Dosen Pembimbing</div>
+          <input type="hidden" id="assign-peng-id">
+          <div style="background:#F7F6F3;border-radius:8px;padding:12px;margin-bottom:14px;" id="assign-mhs-info"></div>
+          <div class="form-row">
+            <div class="form-group" style="margin:0">
+              <label>PS1 — Pembimbing Utama</label>
+              <select id="assign-ps1"></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>PS2 — Pembimbing Pendamping (opsional)</label>
+              <select id="assign-ps2"><option value="">— Tidak ada —</option></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Catatan untuk mahasiswa (opsional)</label>
+            <textarea id="assign-catatan" placeholder="cth: Silakan segera hubungi dosen pembimbing..."></textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" onclick="closeModal('modal-assign')">Batal</button>
+            <button class="btn btn-primary" onclick="saveAssign()">💾 Simpan & Assign</button>
+          </div>
         </div>
       </div>
 
@@ -758,7 +844,7 @@ function showPage(p,el){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   if(el)el.classList.add('active');
-  const T={dashboard:'Dashboard',mhs:'Mahasiswa & Tugas Akhir',dosen:'Dosen',bobot:'Bobot & Formula',jadwal:'Jadwal',input:'Input Nilai',rekap:'Rekap Nilai',template:'Template Berkas',users:'Kelola Akun'};
+  const T={dashboard:'Dashboard',mhs:'Mahasiswa & Tugas Akhir',dosen:'Dosen',bobot:'Bobot & Formula',jadwal:'Jadwal',input:'Input Nilai',rekap:'Rekap Nilai',template:'Template Berkas',users:'Kelola Akun',pengajuan:'Pengajuan Dosen Pembimbing'};
   document.getElementById('topbar-title').textContent=T[p]||p;
   if(p==='dashboard')renderDashboard();
   if(p==='mhs'){populateMhsPS1();renderMhs();}
@@ -769,6 +855,7 @@ function showPage(p,el){
   if(p==='rekap')renderRekap();
   if(p==='users')initUsersPage();
   if(p==='template')loadTemplateList();
+  if(p==='pengajuan')initPengajuanAdmin();
 }
 
 function renderDashboard(){
@@ -1460,6 +1547,155 @@ function doAdminReset(){
   al.style.cssText='display:block;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;background:#d4f0d7;color:#1a6b25;';
   al.textContent='✅ Password berhasil direset! Silakan login dengan password baru.';
   document.getElementById('admin-reset-block').style.display='none';
+}
+
+// ══════════════════════════════════════════
+//  PENGAJUAN DOSEN PEMBIMBING — ADMIN
+// ══════════════════════════════════════════
+let _allPengajuan=[], _assignPengId=null;
+
+async function initPengajuanAdmin(){
+  await Promise.all([loadPengajuanAdmin(),loadKuotaDosen()]);
+}
+
+async function loadPengajuanAdmin(){
+  const sb=getSB(); if(!sb){showPengAlert('Supabase belum terhubung.','warn');return;}
+  const tbody=document.getElementById('pengajuan-tbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:14px;">Memuat...</td></tr>';
+  try{
+    const {data,error}=await sb.from('pengajuan_ta')
+      .select('*,users(nama,nim_or_inisial,angkatan)').order('updated_at',{ascending:false});
+    if(error) throw error;
+    _allPengajuan=data||[]; filterPengajuan();
+  }catch(e){showPengAlert('Gagal: '+e.message,'danger');}
+}
+
+function filterPengajuan(){
+  const q=(document.getElementById('peng-q')?.value||'').toLowerCase();
+  const sf=document.getElementById('peng-filter-status')?.value||'';
+  renderPengajuanTable(_allPengajuan.filter(p=>{
+    const nama=p.users?.nama||'',nim=p.users?.nim_or_inisial||'';
+    if(q&&![nama,nim,p.judul_sementara||'',p.bidang_riset||''].some(s=>s.toLowerCase().includes(q))) return false;
+    if(sf&&p.status!==sf) return false;
+    return true;
+  }));
+}
+
+function renderPengajuanTable(rows){
+  const tbody=document.getElementById('pengajuan-tbody'); if(!tbody) return;
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:16px;">Tidak ada data</td></tr>';return;}
+  const stMap={draft:'badge-none',menunggu:'badge-warning',disetujui:'badge-fix',final:'badge-done'};
+  const stLbl={draft:'Draft',menunggu:'Menunggu',disetujui:'Sudah assign',final:'Final ✓'};
+  tbody.innerHTML=rows.map((p,i)=>`<tr>
+    <td style="color:#888;font-size:12px">${i+1}</td>
+    <td><div style="font-weight:500;font-size:13px">${p.users?.nama||'—'}</div>
+      <div style="font-size:11px;color:#888">${p.users?.nim_or_inisial||''}</div></td>
+    <td style="font-size:12px;max-width:180px;white-space:normal;line-height:1.4">${p.judul_sementara||'—'}</td>
+    <td style="font-size:12px;color:#555">${p.bidang_riset||'—'}</td>
+    <td><span class="badge ${stMap[p.status]||'badge-none'}">${stLbl[p.status]||p.status}</span></td>
+    <td>${p.ps1_inisial?`<span class="tag">${p.ps1_inisial}</span>`:'—'}</td>
+    <td>${p.ps2_inisial?`<span class="tag">${p.ps2_inisial}</span>`:'—'}</td>
+    <td><div class="action-btns" style="opacity:1;gap:4px;">
+      <button class="btn btn-sm btn-icon" onclick="openAssign('${p.id}')" title="Assign">👨‍🏫</button>
+      ${p.status==='disetujui'?`<button class="btn btn-sm btn-icon" style="color:var(--green)" onclick="umumkan('${p.id}')" title="Final">📢</button>`:''}
+    </div></td>
+  </tr>`).join('');
+}
+
+function openAssign(pengId){
+  _assignPengId=pengId;
+  const p=_allPengajuan.find(x=>x.id===pengId); if(!p) return;
+  document.getElementById('assign-peng-id').value=pengId;
+  document.getElementById('modal-assign-title').textContent='Assign Dosen — '+(p.users?.nama||'?');
+  document.getElementById('assign-mhs-info').innerHTML=`
+    <div style="font-size:13px;font-weight:600">${p.users?.nama||'—'} <span style="font-size:11px;font-weight:400;color:#888">${p.users?.nim_or_inisial||''}</span></div>
+    <div style="font-size:12px;color:#555;margin-top:4px;">Topik: ${p.judul_sementara||'—'}</div>
+    <div style="font-size:12px;color:#555;">Bidang: ${p.bidang_riset||'—'}</div>`;
+  const fillSel=(sel,selected='',empty=false)=>{
+    let h=empty?'<option value="">— Tidak ada —</option>':'';
+    Object.entries(DB.dosen||{}).sort((a,b)=>a[1].localeCompare(b[1])).forEach(([k,v])=>{
+      const beban=_allPengajuan.filter(x=>x.ps1_inisial===k||x.ps2_inisial===k).length;
+      h+=`<option value="${k}" ${k===selected?'selected':''}>${k} — ${v.split(',')[0]} (beban:${beban})</option>`;
+    });
+    sel.innerHTML=h;
+  };
+  fillSel(document.getElementById('assign-ps1'),p.ps1_inisial||'');
+  fillSel(document.getElementById('assign-ps2'),p.ps2_inisial||'',true);
+  document.getElementById('assign-catatan').value=p.catatan_admin||'';
+  openModal('modal-assign');
+}
+
+async function saveAssign(){
+  const sb=getSB(); if(!sb) return;
+  const ps1=document.getElementById('assign-ps1').value;
+  if(!ps1){alert('PS1 wajib diisi.');return;}
+  const {error}=await sb.from('pengajuan_ta').update({
+    ps1_inisial:ps1,ps2_inisial:document.getElementById('assign-ps2').value||null,
+    catatan_admin:document.getElementById('assign-catatan').value.trim(),
+    status:'disetujui',assigned_at:new Date().toISOString(),updated_at:new Date().toISOString()
+  }).eq('id',document.getElementById('assign-peng-id').value);
+  if(error){alert('Gagal: '+error.message);return;}
+  closeModal('modal-assign');
+  showPengAlert('✅ Dosen berhasil di-assign!','success');
+  loadPengajuanAdmin(); loadKuotaDosen();
+}
+
+async function umumkan(id){
+  if(!confirm('Umumkan sebagai FINAL?')) return;
+  const sb=getSB(); if(!sb) return;
+  const {error}=await sb.from('pengajuan_ta').update({
+    status:'final',announced_at:new Date().toISOString(),updated_at:new Date().toISOString()
+  }).eq('id',id);
+  if(error){alert('Gagal: '+error.message);return;}
+  showPengAlert('✅ Berhasil diumumkan final!','success');
+  loadPengajuanAdmin();
+}
+
+async function umumkanSemuaFinal(){
+  const list=_allPengajuan.filter(p=>p.status==='disetujui');
+  if(!list.length){alert('Tidak ada yang berstatus sudah assign.');return;}
+  if(!confirm(`Umumkan ${list.length} pengajuan sebagai FINAL?`)) return;
+  const sb=getSB(); if(!sb) return;
+  const {error}=await sb.from('pengajuan_ta').update({
+    status:'final',announced_at:new Date().toISOString(),updated_at:new Date().toISOString()
+  }).in('id',list.map(p=>p.id));
+  if(error){alert('Gagal: '+error.message);return;}
+  showPengAlert(`✅ ${list.length} pengajuan diumumkan final!`,'success');
+  loadPengajuanAdmin();
+}
+
+async function loadKuotaDosen(){
+  const sb=getSB(); if(!sb) return;
+  const tbody=document.getElementById('kuota-tbody'); if(!tbody) return;
+  try{
+    const {data}=await sb.from('kuota_dosen').select('*');
+    const km={};(data||[]).forEach(k=>km[k.inisial+'_'+k.angkatan]=k);
+    tbody.innerHTML=Object.entries(DB.dosen||{}).sort((a,b)=>a[1].localeCompare(b[1])).map(([ini,nama])=>{
+      const assign=_allPengajuan.filter(p=>p.ps1_inisial===ini||p.ps2_inisial===ini).length;
+      const kuota=km[ini+'_'+currentAngkatan]?.kuota_max??6;
+      const sisa=Math.max(0,kuota-assign);
+      const w=sisa===0?'color:#c0392b;font-weight:600':sisa<=2?'color:#e67e22':'';
+      return `<tr>
+        <td><span class="tag">${ini}</span></td><td>${nama.split(',')[0]}</td>
+        <td style="text-align:center"><span class="badge badge-b">${assign}</span></td>
+        <td style="text-align:center"><input type="number" min="1" max="20" value="${kuota}"
+          style="width:54px;text-align:center;padding:4px 6px;border:1px solid #e0ddd6;border-radius:6px;font-size:12px;"
+          onchange="saveKuota('${ini}',this.value)"></td>
+        <td style="text-align:center;${w}">${sisa}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){tbody.innerHTML=`<tr><td colspan="5" style="color:#888;padding:12px">${e.message}</td></tr>`;}
+}
+
+async function saveKuota(inisial,val){
+  const sb=getSB(); if(!sb) return;
+  await sb.from('kuota_dosen').upsert({inisial,angkatan:currentAngkatan,kuota_max:parseInt(val)||6},{onConflict:'inisial,angkatan'});
+}
+
+function showPengAlert(msg,type){
+  const el=document.getElementById('pengajuan-alert'); if(!el) return;
+  el.className='alert alert-'+type; el.textContent=msg; el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none',4000);
 }
 
 // ensure 2022 in list

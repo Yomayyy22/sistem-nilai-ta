@@ -144,6 +144,7 @@ textarea{resize:vertical;min-height:80px;}
         <button class="tab active" onclick="switchTab('approval',this)">📋 Approval Berkas <span id="notif-count"></span></button>
         <button class="tab" onclick="switchTab('nilai',this)">✏️ Input Nilai</button>
         <button class="tab" onclick="switchTab('bimbingan',this)">📖 Kartu Bimbingan</button>
+        <button class="tab" onclick="switchTab('pengajuan',this)">🎓 Mahasiswa Bimbingan</button>
       </div>
       <button class="btn btn-sm" onclick="document.getElementById('modal-ganti-dosen').style.display='flex'">🔑 Password</button>
       <button class="btn btn-sm" onclick="doLogout()">Keluar</button>
@@ -213,6 +214,15 @@ textarea{resize:vertical;min-height:80px;}
     </div>
 
 
+
+    <!-- MAHASISWA BIMBINGAN -->
+    <div id="tab-pengajuan" style="display:none;">
+      <div class="card">
+        <div class="card-title">Mahasiswa yang Akan Dibimbing</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Mahasiswa yang sudah di-assign koordinator dengan Anda sebagai pembimbing.</div>
+        <div id="peng-dosen-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -317,6 +327,7 @@ function switchTab(tab,el){
   if(tab==='bimbingan') loadKBDosen();
   if(tab==='nilai'){ loadNilaiMhsOptions(); renderRekap(); }
   if(tab==='approval') loadPendaftaranList();
+  if(tab==='pengajuan') loadPengajuanDosen();
 }
 
 // ── PENDAFTARAN LIST ──────────────────────────
@@ -599,6 +610,45 @@ async function previewDoc(path, nama){
     }
   }catch(e){
     document.getElementById('preview-body').innerHTML='<div style="text-align:center;padding:40px;color:#888;">Gagal memuat: '+e.message+'</div>';
+  }
+}
+
+async function loadPengajuanDosen(){
+  const el=document.getElementById('peng-dosen-list');
+  if(!el) return;
+  el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const inisial=currentUser.nim_or_inisial;
+    const {data,error}=await sb.from('pengajuan_ta')
+      .select('*,users(nama,nim_or_inisial,angkatan)')
+      .or(`ps1_inisial.eq.${inisial},ps2_inisial.eq.${inisial}`)
+      .order('updated_at',{ascending:false});
+    if(error) throw error;
+    if(!data||!data.length){
+      el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">Belum ada mahasiswa yang di-assign ke Anda.</div>';
+      return;
+    }
+    const stLbl={draft:'Draft',menunggu:'Menunggu',disetujui:'Sudah assign',final:'Final ✓'};
+    const stCls={draft:'badge-draft',menunggu:'badge-menunggu',disetujui:'badge-fix',final:'badge-disetujui'};
+    el.innerHTML=`<table><thead><tr>
+      <th>#</th><th>Nama</th><th>NIM</th><th>Angkatan</th>
+      <th>Topik</th><th>Bidang</th><th>Peran</th><th>Status</th>
+    </tr></thead><tbody>`+data.map((p,i)=>{
+      const peran=p.ps1_inisial===inisial&&p.ps2_inisial===inisial?'PS1 & PS2':
+                  p.ps1_inisial===inisial?'PS1 (Utama)':'PS2 (Pendamping)';
+      return `<tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td style="font-weight:500">${p.users?.nama||'—'}</td>
+        <td style="font-size:11px;color:var(--muted)">${p.users?.nim_or_inisial||''}</td>
+        <td style="font-size:12px">${p.users?.angkatan||'—'}</td>
+        <td style="font-size:12px;max-width:160px;white-space:normal;line-height:1.4">${p.judul_sementara||'—'}</td>
+        <td style="font-size:12px;color:#555">${p.bidang_riset||'—'}</td>
+        <td><span class="badge badge-b" style="font-size:10px">${peran}</span></td>
+        <td><span class="badge ${stCls[p.status]||'badge-draft'}">${stLbl[p.status]||p.status}</span></td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+  }catch(e){
+    el.innerHTML=`<div style="color:#c0392b;font-size:13px;padding:12px">${e.message}</div>`;
   }
 }
 
