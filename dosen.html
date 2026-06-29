@@ -662,19 +662,49 @@ function showAlert(id,msg,type){
 // ── INPUT NILAI ────────────────────────────
 function loadNilaiMhsOptions(){
   if(!adminDB) return;
-  const mbList=getMhsBimbingan();
+  const inisial = currentUser?.nim_or_inisial||'';
   const sel=document.getElementById('nilai-filter-mhs');
   if(!sel) return;
   const prev=sel.value;
   sel.innerHTML='<option value="">-- Pilih mahasiswa --</option>';
-  adminDB.master?.filter(m=>m.mhs.some(mh=>mbList.includes(mh.nim))).forEach(m=>{
-    m.mhs.forEach((mh,mi)=>{
-      const o=document.createElement('option');
-      o.value=m.id+'|'+mi;
-      o.textContent=mh.nama+' ('+mh.nim+')';
-      sel.appendChild(o);
+
+  // Kelompok 1: Mahasiswa Bimbingan (PS1 atau PS2)
+  const bimbingan = adminDB.master?.filter(m=>m.ps1===inisial||m.ps2===inisial)||[];
+  if(bimbingan.length){
+    const grp1 = document.createElement('optgroup');
+    grp1.label = '👨‍🏫 Mahasiswa Bimbingan';
+    bimbingan.forEach(m=>{
+      m.mhs.forEach((mh,mi)=>{
+        const o=document.createElement('option');
+        o.value=m.id+'|'+mi;
+        const peran = m.ps1===inisial ? 'PS1' : 'PS2';
+        o.textContent=`${mh.nama} (${mh.nim}) — ${peran}`;
+        grp1.appendChild(o);
+      });
     });
-  });
+    sel.appendChild(grp1);
+  }
+
+  // Kelompok 2: Mahasiswa yang Diuji (Penguji)
+  const diuji = adminDB.master?.filter(m=>m.penguji===inisial&&m.ps1!==inisial&&m.ps2!==inisial)||[];
+  if(diuji.length){
+    const grp2 = document.createElement('optgroup');
+    grp2.label = '📋 Mahasiswa yang Diuji';
+    diuji.forEach(m=>{
+      m.mhs.forEach((mh,mi)=>{
+        const o=document.createElement('option');
+        o.value=m.id+'|'+mi;
+        o.textContent=`${mh.nama} (${mh.nim}) — Penguji`;
+        grp2.appendChild(o);
+      });
+    });
+    sel.appendChild(grp2);
+  }
+
+  if(!bimbingan.length && !diuji.length){
+    sel.innerHTML='<option value="">Tidak ada mahasiswa bimbingan/ujian</option>';
+  }
+
   if(prev) sel.value=prev;
   renderNilaiDosen();
   renderRekap();
@@ -698,7 +728,7 @@ function renderNilaiDosen(){
   if(formEl) formEl.style.display='block';
 
   const mh=m.mhs[mi];
-  const dosenInisial=currentUser.nim_or_inisial;
+  // inisial dosen sudah dipakai di renderNilaiDosen via currentUser
   const isProses=sesi==='proses';
   const bobot=sesi==='sidang'?adminDB.bobot?.sidang:adminDB.bobot?.seminar;
   const bPr=adminDB.bobot?.proses||{B1:0.25,B2:0.40,B3:0.35};
@@ -707,12 +737,21 @@ function renderNilaiDosen(){
     {B1:'Aktivitas',B2:'Kemandirian',B3:'Usaha/Ketekunan'}:
     {A1:'Latar belakang',A2:'Metode',A3:'Tata bahasa',A4:'Presentasi',A5:'Menjawab'};
 
-  // Tentukan peran dosen ini (ps1/ps2/penguji)
-  let peran=null;
-  if(m.ps1===dosenInisial) peran='ps1';
-  else if(m.ps2===dosenInisial) peran='ps2';
-  else if(m.penguji===dosenInisial&&!isProses) peran='penguji';
-  if(!peran){ formEl.innerHTML=`<div style="color:#c0392b;font-size:13px;">Anda bukan pembimbing/penguji mahasiswa ini untuk sesi ${sesi}.</div>`; return; }
+  // Tentukan peran dosen ini (ps1/ps2/penguji) — otomatis
+  const inisial = currentUser?.nim_or_inisial||'';
+  let peran = null;
+  if(m.ps1===inisial) peran='ps1';
+  else if(m.ps2===inisial) peran='ps2';
+  else if(m.penguji===inisial && !isProses) peran='penguji';
+  // Jika penguji dan sesi proses, tidak punya akses
+  if(!peran){
+    if(m.penguji===inisial && isProses){
+      formEl.innerHTML=`<div class="alert alert-warn">Penguji tidak menilai komponen Proses. Pilih sesi Seminar atau Sidang.</div>`;
+    } else {
+      formEl.innerHTML=`<div class="alert alert-err">Anda tidak terdaftar sebagai pembimbing atau penguji mahasiswa ini.</div>`;
+    }
+    return;
+  }
 
   // Baca nilai yang sudah ada
   const existing=(adminDB.nilai?.[sesId]?.[sesi]||[]).find(r=>r.mhsIdx===mi&&r.peran===peran)||{};
